@@ -201,11 +201,12 @@ public class DoodleView extends FrameLayout {
                 }
 
                 if (mLastBitmap != null) {
-                    canvas.drawBitmap(mLastBitmap, -10, -10, null);
+                    canvas.drawBitmap(mLastBitmap, -80, -80, null);
                 }
 
-                mPaint.setTextSize(System.currentTimeMillis() % 30 + 10);
-                canvas.drawText("test doodle", 50, 50, mPaint);
+                long tms = System.currentTimeMillis();
+                mPaint.setTextSize(tms % 30 + 10);
+                canvas.drawText("test doodle " + tms, 100, 300, mPaint);
 
                 if (mLastBitmap == null) {
                     mLastBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.ARGB_8888);
