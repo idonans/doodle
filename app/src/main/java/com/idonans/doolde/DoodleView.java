@@ -13,9 +13,11 @@ import android.support.v4.view.GestureDetectorCompat;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.TextureView;
 import android.widget.FrameLayout;
 
+import com.idonans.acommon.lang.Available;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 
@@ -160,13 +162,14 @@ public class DoodleView extends FrameLayout {
         }
     }
 
-    private class Render {
+    private class Render implements Available {
 
         private boolean mEnable;
         private int mWidth;
         private int mHeight;
         private final TaskQueue mTaskQueue = new TaskQueue(1);
 
+        private ScaleGestureDetector mScaleGestureDetector;
         private GestureDetectorCompat mGestureDetectorCompat;
         private LinkedList<Frame> mFrames = new LinkedList<>();
         private ArrayList<Action> mActions = new ArrayList<>();
@@ -174,10 +177,90 @@ public class DoodleView extends FrameLayout {
         private final Paint mPaint;
 
         private Render(Context context) {
+            mScaleGestureDetector = new ScaleGestureDetector(context, new RenderScaleGestureListener());
             mGestureDetectorCompat = new GestureDetectorCompat(context, new RenderGestureListener());
             mGestureDetectorCompat.setIsLongpressEnabled(false);
 
             mPaint = new Paint();
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return mEnable && mWidth > 0 && mHeight > 0;
+        }
+
+        private class RenderScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+
+            private static final String TAG = "Render$RenderScaleGestureListener";
+            private static final float MAX_SCALE = 2.0f;
+            private static final float MIN_SCALE = 0.75f;
+
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                if (!isAvailable()) {
+                    return false;
+                }
+
+                CommonLog.d(TAG + " onScale scaleFactor");
+
+                // 缩放画布
+                int d = mWidth / 2;
+                float pre = detector.getPreviousSpan();
+                float cur = detector.getCurrentSpan();
+                float focusX = detector.getFocusX();
+                float focusY = detector.getFocusY();
+                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= mWidth || focusY >= mHeight) {
+                    CommonLog.d(TAG + " onScale ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + mWidth + ", height:" + mHeight);
+                    return false;
+                }
+                if (cur > pre) {
+                    // 放大
+                    float dx = cur - pre;
+                    float ds = dx / d;
+                    float textureScale = mTextureView.getScaleX();
+                    float targetScale = textureScale + ds;
+                    CommonLog.d(TAG + " scale up targetScale:" + targetScale + ", textureScale:" + textureScale + ", ds:" + ds + ", d:" + d + ", cur:" + cur + ", pre:" + pre + ", dx:" + dx);
+                    if (targetScale > MAX_SCALE) {
+                        targetScale = MAX_SCALE;
+                    }
+                    mTextureView.setPivotX(focusX);
+                    mTextureView.setPivotY(focusY);
+                    mTextureView.setScaleX(targetScale);
+                    mTextureView.setScaleY(targetScale);
+                } else if (cur < pre) {
+                    // 缩小
+                    float dx = pre - cur;
+                    float ds = dx / d;
+                    float textureScale = mTextureView.getScaleX();
+                    float targetScale = textureScale - ds;
+                    CommonLog.d(TAG + " scale down targetScale:" + targetScale + ", textureScale:" + textureScale + ", ds:" + ds + ", d:" + d + ", cur:" + cur + ", pre:" + pre + ", dx:" + dx);
+                    if (targetScale < MIN_SCALE) {
+                        targetScale = MIN_SCALE;
+                    }
+                    mTextureView.setPivotX(focusX);
+                    mTextureView.setPivotY(focusY);
+                    mTextureView.setScaleX(targetScale);
+                    mTextureView.setScaleY(targetScale);
+                }
+
+                return true;
+            }
+
+            @Override
+            public boolean onScaleBegin(ScaleGestureDetector detector) {
+                if (!isAvailable()) {
+                    return false;
+                }
+
+                CommonLog.d(TAG + " onScaleBegin scaleFactor");
+                return true;
+            }
+
+            @Override
+            public void onScaleEnd(ScaleGestureDetector detector) {
+                CommonLog.d(TAG + " onScaleEnd scaleFactor");
+            }
+
         }
 
         private class RenderGestureListener extends GestureDetector.SimpleOnGestureListener {
@@ -222,17 +305,6 @@ public class DoodleView extends FrameLayout {
                     // 多指移动画布
                     mTextureView.setTranslationX(mTextureView.getTranslationX() - distanceX);
                     mTextureView.setTranslationY(mTextureView.getTranslationY() - distanceY);
-                    /*
-                    // 多指缩放画布
-                    float x1 = MotionEventCompat.getX(e2, 0);
-                    float y1 = MotionEventCompat.getY(e2, 0);
-                    float x2 = MotionEventCompat.getX(e2, 1);
-                    float y2 = MotionEventCompat.getY(e2, 1);
-
-                    double ds = Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
-                    float scaleX = mTextureView.getScaleX();
-                    */
-
                 }
 
                 return true;
@@ -246,13 +318,9 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public void run() {
-                if (!mEnable) {
-                    CommonLog.d(TAG + " enable is false, ignore");
+                if (!isAvailable()) {
+                    CommonLog.d(TAG + " available is false, ignore");
                     return;
-                }
-
-                if (mWidth <= 0 || mHeight <= 0) {
-                    CommonLog.d(TAG + " width or height invalid, ignore width:" + mWidth + ", height:" + mHeight);
                 }
 
                 Canvas canvas = null;
@@ -326,7 +394,13 @@ public class DoodleView extends FrameLayout {
         }
 
         public boolean onTouchEvent(MotionEvent event) {
-            return mGestureDetectorCompat.onTouchEvent(event);
+            if (!isAvailable()) {
+                return false;
+            }
+
+            mScaleGestureDetector.onTouchEvent(event);
+            mGestureDetectorCompat.onTouchEvent(event);
+            return true;
         }
 
         private void draw(Canvas canvas) {
