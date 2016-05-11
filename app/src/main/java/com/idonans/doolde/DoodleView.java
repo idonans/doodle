@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
@@ -82,9 +83,7 @@ public class DoodleView extends FrameLayout {
         @Override
         public boolean onTouchEvent(MotionEvent event) {
             CommonLog.d(TAG + " onTouchEvent " + event);
-            if (mRender.onTouchEvent(event)) {
-                mRender.postInvalidate();
-            }
+            mRender.onTouchEvent(event);
             return true;
         }
 
@@ -164,6 +163,9 @@ public class DoodleView extends FrameLayout {
 
     private class Render implements Available {
 
+        private static final String TAG = "Render";
+        private boolean mInit;
+
         private boolean mEnable;
         private int mWidth;
         private int mHeight;
@@ -173,6 +175,19 @@ public class DoodleView extends FrameLayout {
         private GestureDetectorCompat mGestureDetectorCompat;
         private LinkedList<Frame> mFrames = new LinkedList<>();
         private ArrayList<Action> mActions = new ArrayList<>();
+
+        private Bitmap mBitmap; // 原始画布
+        private int mBitmapWidth; // 画布原始宽度
+        private int mBitmapHeight; // 画布原始高度
+        private Canvas mBitmapCanvas; // 原始画布
+        private Matrix mMatrix = new Matrix();
+
+        private static final float MAX_SCALE = 2.0f;
+        private static final float MIN_SCALE = 0.75f;
+
+        private float mScale = 1f;
+        private float mTranslateX = 0f;
+        private float mTrasnlateY = 0f;
 
         private final Paint mPaint;
 
@@ -184,16 +199,41 @@ public class DoodleView extends FrameLayout {
             mPaint = new Paint();
         }
 
+        private void init() {
+            if (mInit) {
+                return;
+            }
+
+            if (!mEnable || mWidth <= 0 || mHeight <= 0) {
+                return;
+            }
+
+            mBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.ARGB_8888);
+            mBitmapWidth = mBitmap.getWidth();
+            mBitmapHeight = mBitmap.getHeight();
+            mBitmapCanvas = new Canvas(mBitmap);
+
+            mInit = true;
+        }
+
+        private void clear() {
+            if (mInit) {
+                mInit = false;
+                mBitmap = null;
+                mBitmapWidth = -1;
+                mBitmapHeight = -1;
+                mBitmapCanvas = null;
+            }
+        }
+
         @Override
         public boolean isAvailable() {
-            return mEnable && mWidth > 0 && mHeight > 0;
+            return mInit && mEnable && mWidth > 0 && mHeight > 0;
         }
 
         private class RenderScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
 
             private static final String TAG = "Render$RenderScaleGestureListener";
-            private static final float MAX_SCALE = 2.0f;
-            private static final float MIN_SCALE = 0.75f;
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
@@ -223,8 +263,6 @@ public class DoodleView extends FrameLayout {
                     if (targetScale > MAX_SCALE) {
                         targetScale = MAX_SCALE;
                     }
-                    mTextureView.setPivotX(focusX);
-                    mTextureView.setPivotY(focusY);
                     mTextureView.setScaleX(targetScale);
                     mTextureView.setScaleY(targetScale);
                 } else if (cur < pre) {
@@ -237,8 +275,6 @@ public class DoodleView extends FrameLayout {
                     if (targetScale < MIN_SCALE) {
                         targetScale = MIN_SCALE;
                     }
-                    mTextureView.setPivotX(focusX);
-                    mTextureView.setPivotY(focusY);
                     mTextureView.setScaleX(targetScale);
                     mTextureView.setScaleY(targetScale);
                 }
@@ -253,6 +289,20 @@ public class DoodleView extends FrameLayout {
                 }
 
                 CommonLog.d(TAG + " onScaleBegin scaleFactor");
+
+                // 开始缩放画布, 计算缩放点
+                int d = mWidth / 2;
+                float pre = detector.getPreviousSpan();
+                float cur = detector.getCurrentSpan();
+                float focusX = detector.getFocusX();
+                float focusY = detector.getFocusY();
+                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= mWidth || focusY >= mHeight) {
+                    CommonLog.d(TAG + " onScaleBegin ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + mWidth + ", height:" + mHeight);
+                    return false;
+                }
+
+                mTextureView.setPivotX(focusX);
+                mTextureView.setPivotY(focusY);
                 return true;
             }
 
@@ -282,6 +332,7 @@ public class DoodleView extends FrameLayout {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
                 CommonLog.d(TAG + " onSingleTapConfirmed " + e);
+                mRender.enqueueAction(new PointAction(e.getX(), e.getY(), Color.RED, 30));
                 return true;
             }
 
@@ -331,17 +382,13 @@ public class DoodleView extends FrameLayout {
                         return;
                     }
 
-                    // clear canvas
-                    draw(canvas);
+                    // 在原始画布上绘画
+                    draw(mBitmapCanvas);
+                    drawTest(mBitmapCanvas);
 
-                    // test code
-                    mPaint.setColor(Color.BLACK);
-                    mPaint.setTextSize(30);
-                    canvas.drawText("time:" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()), 50, 200, mPaint);
-                    mPaint.setColor(Color.DKGRAY);
-                    mPaint.setTextSize(50);
-                    canvas.drawText("test draw", 50, 400, mPaint);
-
+                    // 将原始画布中的内容绘画到 canvas 上
+                    canvas.drawColor(Color.WHITE);
+                    canvas.drawBitmap(mBitmap, 0, 0, mPaint);
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
@@ -353,8 +400,31 @@ public class DoodleView extends FrameLayout {
 
         }
 
+        /**
+         * test method
+         */
+        private void drawTest(Canvas canvas) {
+            // test code
+            mPaint.setColor(Color.BLACK);
+            mPaint.setTextSize(30);
+            canvas.drawText("time:" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()), 50, 200, mPaint);
+            mPaint.setColor(Color.DKGRAY);
+            mPaint.setTextSize(50);
+            canvas.drawText("test draw", 50, 400, mPaint);
+        }
+
         public void postInvalidate() {
             mTaskQueue.enqueue(new Draw());
+        }
+
+        public void enqueueAction(final Action action) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    mActions.add(action);
+                }
+            });
+            postInvalidate();
         }
 
         private abstract class Renderable {
@@ -378,19 +448,51 @@ public class DoodleView extends FrameLayout {
          * 绘画动作(单步)
          */
         private class Action extends Renderable {
+
+            private String TAG = "Render$Action#" + getClass().getSimpleName();
+
             @Override
             public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+                CommonLog.d(TAG + " onDraw");
+            }
+        }
 
+        private class PointAction extends Action {
+
+            private final float mX;
+            private final float mY;
+            private final int mColor;
+            private final int mSize;
+
+            private PointAction(float x, float y, int color, int size) {
+                mX = x;
+                mY = y;
+                mColor = color;
+                mSize = size;
+            }
+
+            @Override
+            public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+                super.onDraw(canvas, paint);
+                paint.setColor(mColor);
+                paint.setStrokeWidth(mSize);
+                canvas.drawPoint(mX, mY, paint);
             }
         }
 
         public void setEnable(boolean enable) {
             mEnable = enable;
+            if (mEnable) {
+                init();
+            } else {
+                clear();
+            }
         }
 
         public void setSize(int width, int height) {
             mWidth = width;
             mHeight = height;
+            init();
         }
 
         public boolean onTouchEvent(MotionEvent event) {
@@ -399,11 +501,14 @@ public class DoodleView extends FrameLayout {
             }
 
             mScaleGestureDetector.onTouchEvent(event);
-            mGestureDetectorCompat.onTouchEvent(event);
+            if (!mScaleGestureDetector.isInProgress()) {
+                mGestureDetectorCompat.onTouchEvent(event);
+            }
             return true;
         }
 
         private void draw(Canvas canvas) {
+            CommonLog.d(TAG + " draw");
             // 清空背景
             canvas.drawColor(Color.WHITE);
 
