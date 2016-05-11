@@ -8,14 +8,21 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
-import android.support.v4.view.MotionEventCompat;
+import android.support.annotation.NonNull;
+import android.support.v4.view.GestureDetectorCompat;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.TextureView;
 import android.widget.FrameLayout;
 
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
@@ -52,7 +59,7 @@ public class DoodleView extends FrameLayout {
     private TextureView mTextureView;
 
     private void init() {
-        mRender = new Render();
+        mRender = new Render(getContext());
 
         mRootView = new RootView(getContext());
         mTextureView = new TextureView(getContext());
@@ -73,7 +80,7 @@ public class DoodleView extends FrameLayout {
         @Override
         public boolean onTouchEvent(MotionEvent event) {
             CommonLog.d(TAG + " onTouchEvent " + event);
-            if (MotionEventCompat.getActionMasked(event) == MotionEvent.ACTION_UP) {
+            if (mRender.onTouchEvent(event)) {
                 mRender.postInvalidate();
             }
             return true;
@@ -107,7 +114,7 @@ public class DoodleView extends FrameLayout {
          */
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            CommonLog.d(TAG + "onSurfaceTextureAvailable width:" + width + ", height:" + height);
+            CommonLog.d(TAG + " onSurfaceTextureAvailable width:" + width + ", height:" + height);
             mRender.setEnable(true);
             mRender.setSize(width, height);
         }
@@ -122,7 +129,7 @@ public class DoodleView extends FrameLayout {
          */
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            CommonLog.d(TAG + "onSurfaceTextureSizeChanged width:" + width + ", height:" + height);
+            CommonLog.d(TAG + " onSurfaceTextureSizeChanged width:" + width + ", height:" + height);
             mRender.setSize(width, height);
         }
 
@@ -136,7 +143,7 @@ public class DoodleView extends FrameLayout {
          */
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            CommonLog.d(TAG + "onSurfaceTextureDestroyed");
+            CommonLog.d(TAG + " onSurfaceTextureDestroyed");
             mRender.setEnable(false);
             return false;
         }
@@ -149,26 +156,165 @@ public class DoodleView extends FrameLayout {
          */
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            CommonLog.d(TAG + "onSurfaceTextureUpdated");
+            CommonLog.d(TAG + " onSurfaceTextureUpdated");
         }
     }
 
-    private class Render implements Runnable {
+    private class Render {
 
         private boolean mEnable;
         private int mWidth;
         private int mHeight;
         private final TaskQueue mTaskQueue = new TaskQueue(1);
 
-        private Bitmap mLastBitmap;
+        private GestureDetectorCompat mGestureDetectorCompat;
+        private LinkedList<Frame> mFrames = new LinkedList<>();
+        private ArrayList<Action> mActions = new ArrayList<>();
 
         private final Paint mPaint;
 
-        private Render() {
+        private Render(Context context) {
+            mGestureDetectorCompat = new GestureDetectorCompat(context, new RenderGestureListener());
+            mGestureDetectorCompat.setIsLongpressEnabled(false);
+
             mPaint = new Paint();
-            mPaint.setColor(Color.RED);
         }
 
+        private class RenderGestureListener extends GestureDetector.SimpleOnGestureListener {
+
+            private static final String TAG = "Render$RenderGestureListener";
+
+            @Override
+            public boolean onDown(MotionEvent e) {
+                CommonLog.d(TAG + " onDown " + e);
+                return true;
+            }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                CommonLog.d(TAG + " onSingleTapUp " + e);
+                return true;
+            }
+
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                CommonLog.d(TAG + " onSingleTapConfirmed " + e);
+                return true;
+            }
+
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                CommonLog.d(TAG + " onDoubleTap " + e);
+                return true;
+            }
+
+            @Override
+            public boolean onDoubleTapEvent(MotionEvent e) {
+                CommonLog.d(TAG + " onDoubleTapEvent " + e);
+                return true;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                CommonLog.d(TAG + " onScroll e1 " + e1 + ", e2 " + e2 + ", distanceX:" + distanceX + ", distanceY:" + distanceY);
+
+                if (e2.getPointerCount() > 1) {
+                    // 多指移动画布
+                    mTextureView.setTranslationX(mTextureView.getTranslationX() - distanceX);
+                    mTextureView.setTranslationY(mTextureView.getTranslationY() - distanceY);
+                    /*
+                    // 多指缩放画布
+                    float x1 = MotionEventCompat.getX(e2, 0);
+                    float y1 = MotionEventCompat.getY(e2, 0);
+                    float x2 = MotionEventCompat.getX(e2, 1);
+                    float y2 = MotionEventCompat.getY(e2, 1);
+
+                    double ds = Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+                    float scaleX = mTextureView.getScaleX();
+                    */
+
+                }
+
+                return true;
+            }
+
+        }
+
+        private class Draw implements Runnable {
+
+            private static final String TAG = "Render$Draw";
+
+            @Override
+            public void run() {
+                if (!mEnable) {
+                    CommonLog.d(TAG + " enable is false, ignore");
+                    return;
+                }
+
+                if (mWidth <= 0 || mHeight <= 0) {
+                    CommonLog.d(TAG + " width or height invalid, ignore width:" + mWidth + ", height:" + mHeight);
+                }
+
+                Canvas canvas = null;
+                try {
+                    canvas = mTextureView.lockCanvas();
+                    if (canvas == null) {
+                        CommonLog.d(TAG + " canvas is null, ignore");
+                        return;
+                    }
+
+                    // clear canvas
+                    draw(canvas);
+
+                    // test code
+                    mPaint.setColor(Color.BLACK);
+                    mPaint.setTextSize(30);
+                    canvas.drawText("time:" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()), 50, 200, mPaint);
+                    mPaint.setColor(Color.DKGRAY);
+                    mPaint.setTextSize(50);
+                    canvas.drawText("test draw", 50, 400, mPaint);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    if (canvas != null) {
+                        mTextureView.unlockCanvasAndPost(canvas);
+                    }
+                }
+            }
+
+        }
+
+        public void postInvalidate() {
+            mTaskQueue.enqueue(new Draw());
+        }
+
+        private abstract class Renderable {
+            public abstract void onDraw(@NonNull Canvas canvas, @NonNull Paint paint);
+        }
+
+        /**
+         * 帧图像
+         */
+        private class Frame extends Renderable {
+            int actionIndex; // 该帧对应的 action index, 第一帧从 0 开始
+            Bitmap bitmap; // 从起始到该 action index (包含) 所有动作绘画完成之后的图像
+
+            @Override
+            public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+                canvas.drawBitmap(bitmap, 0, 0, paint);
+            }
+        }
+
+        /**
+         * 绘画动作(单步)
+         */
+        private class Action extends Renderable {
+            @Override
+            public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+
+            }
+        }
 
         public void setEnable(boolean enable) {
             mEnable = enable;
@@ -179,47 +325,29 @@ public class DoodleView extends FrameLayout {
             mHeight = height;
         }
 
-        public void postInvalidate() {
-            mTaskQueue.enqueue(this);
+        public boolean onTouchEvent(MotionEvent event) {
+            return mGestureDetectorCompat.onTouchEvent(event);
         }
 
-        @Override
-        public void run() {
-            if (!mEnable) {
-                return;
+        private void draw(Canvas canvas) {
+            // 清空背景
+            canvas.drawColor(Color.WHITE);
+
+            // 从上一个关键帧开始绘画
+            int actionIndex = -1;
+
+            // 绘画上一个关键帧
+            Frame frame = mFrames.peekLast();
+            if (frame != null) {
+                actionIndex = frame.actionIndex;
+                frame.onDraw(canvas, mPaint);
             }
 
-            if (mWidth <= 0 || mHeight <= 0) {
-                return;
+            // 绘画该关键帧之后的所有动作
+            int size = mActions.size();
+            for (int i = actionIndex + 1; i < size; i++) {
+                mActions.get(i).onDraw(canvas, mPaint);
             }
-
-            Canvas canvas = null;
-            try {
-                canvas = mTextureView.lockCanvas();
-                if (canvas == null) {
-                    return;
-                }
-
-                if (mLastBitmap != null) {
-                    canvas.drawBitmap(mLastBitmap, -80, -80, null);
-                }
-
-                long tms = System.currentTimeMillis();
-                mPaint.setTextSize(tms % 30 + 10);
-                canvas.drawText("test doodle " + tms, 100, 300, mPaint);
-
-                if (mLastBitmap == null) {
-                    mLastBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.ARGB_8888);
-                }
-                mLastBitmap = mTextureView.getBitmap(mLastBitmap);
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                if (canvas != null) {
-                    mTextureView.unlockCanvasAndPost(canvas);
-                }
-            }
-
         }
 
     }
