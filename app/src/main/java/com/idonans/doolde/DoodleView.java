@@ -313,7 +313,7 @@ public class DoodleView extends FrameLayout {
 
         }
 
-        private class RenderGestureListener extends GestureDetector.SimpleOnGestureListener {
+        private class RenderGestureListener implements GestureDetector.OnGestureListener {
 
             private static final String TAG = "Render$RenderGestureListener";
 
@@ -324,27 +324,13 @@ public class DoodleView extends FrameLayout {
             }
 
             @Override
+            public void onShowPress(MotionEvent e) {
+            }
+
+            @Override
             public boolean onSingleTapUp(MotionEvent e) {
                 CommonLog.d(TAG + " onSingleTapUp " + e);
-                return true;
-            }
-
-            @Override
-            public boolean onSingleTapConfirmed(MotionEvent e) {
-                CommonLog.d(TAG + " onSingleTapConfirmed " + e);
                 mRender.enqueueAction(new PointAction(e.getX(), e.getY(), Color.RED, 30));
-                return true;
-            }
-
-            @Override
-            public boolean onDoubleTap(MotionEvent e) {
-                CommonLog.d(TAG + " onDoubleTap " + e);
-                return true;
-            }
-
-            @Override
-            public boolean onDoubleTapEvent(MotionEvent e) {
-                CommonLog.d(TAG + " onDoubleTapEvent " + e);
                 return true;
             }
 
@@ -359,6 +345,15 @@ public class DoodleView extends FrameLayout {
                 }
 
                 return true;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                return false;
             }
 
         }
