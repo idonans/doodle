@@ -80,13 +80,6 @@ public class DoodleView extends FrameLayout {
                 return mRender.onTextureTouchEvent(event);
             }
         });
-        mRootView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                CommonLog.d(TAG + " root onTouch " + event);
-                return mRender.onRootTouchEvent(event);
-            }
-        });
 
         setAspectRatio(3, 4);
     }
@@ -354,6 +347,15 @@ public class DoodleView extends FrameLayout {
                 if (e2.getPointerCount() > 1) {
                     // TODO 多指移动画布
 
+                    float oldTranslationX = mTextureView.getTranslationX();
+                    float oldTranslationY = mTextureView.getTranslationY();
+
+                    float targetTranslationX = oldTranslationX - distanceX;
+                    float targetTranslationY = oldTranslationY + distanceY;
+
+                    // TODO 计算移动边界 ?
+                    mTextureView.setTranslationX(targetTranslationX);
+                    mTextureView.setTranslationY(targetTranslationY);
                     return true;
                 }
 
@@ -649,17 +651,6 @@ public class DoodleView extends FrameLayout {
         }
 
         /**
-         * root 上的触摸事件
-         */
-        public boolean onRootTouchEvent(MotionEvent event) {
-            if (!isAvailable()) {
-                return false;
-            }
-
-            return mCanvasTranslationGestureDetectorCompat.onTouchEvent(event);
-        }
-
-        /**
          * texture 上的触摸事件
          */
         public boolean onTextureTouchEvent(MotionEvent event) {
@@ -667,10 +658,11 @@ public class DoodleView extends FrameLayout {
                 return false;
             }
 
-            boolean handle = mCanvasScaleGestureDetector.onTouchEvent(event);
-            handle |= mTextureActionGestureDetectorCompat.onTouchEvent(event);
+            mCanvasScaleGestureDetector.onTouchEvent(event);
+            mCanvasTranslationGestureDetectorCompat.onTouchEvent(event);
+            mTextureActionGestureDetectorCompat.onTouchEvent(event);
 
-            return handle;
+            return true;
         }
 
     }
