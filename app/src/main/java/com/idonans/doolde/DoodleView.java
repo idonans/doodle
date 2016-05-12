@@ -5,7 +5,6 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
@@ -13,9 +12,11 @@ import android.support.annotation.NonNull;
 import android.support.v4.view.GestureDetectorCompat;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.TextureView;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import com.idonans.acommon.lang.Available;
@@ -25,7 +26,6 @@ import com.idonans.acommon.lang.TaskQueue;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedList;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
@@ -67,9 +67,20 @@ public class DoodleView extends FrameLayout {
         mRootView = new RootView(getContext());
         mTextureView = new TextureView(getContext());
         mRootView.addView(mTextureView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
-        addView(mRootView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+
+        FrameLayout.LayoutParams rootViewLayouts = new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT);
+        rootViewLayouts.gravity = Gravity.CENTER;
+        addView(mRootView, rootViewLayouts);
 
         mTextureView.setSurfaceTextureListener(new TextureListener());
+    }
+
+    /**
+     * 设置画布的宽高比， 此方法会删除之前的所有绘画内容
+     */
+    public void setAspectRatio(int width, int height) {
+        mRender.setAspectRatio(width, height);
+        requestLayout();
     }
 
     private class RootView extends FrameLayout {
@@ -78,6 +89,36 @@ public class DoodleView extends FrameLayout {
 
         public RootView(Context context) {
             super(context);
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            final int originalWidth = View.MeasureSpec.getSize(widthMeasureSpec);
+            final int originalHeight = View.MeasureSpec.getSize(heightMeasureSpec);
+            if (originalWidth <= 0 || originalHeight <= 0) {
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+                return;
+            }
+
+            // 先按照整宽计算
+            int targetWidth = originalWidth;
+            int targetHeight = Float.valueOf(1f * targetWidth * mRender.mAspectHeight / mRender.mAspectWidth).intValue();
+            if (targetHeight <= originalHeight) {
+                super.onMeasure(
+                        View.MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
+                return;
+            }
+
+            // 按照整高计算
+            targetHeight = originalHeight;
+            targetWidth = Float.valueOf(1f * targetHeight * mRender.mAspectWidth / mRender.mAspectHeight).intValue();
+            if (targetWidth > originalWidth) {
+                throw new RuntimeException("measure error");
+            }
+            super.onMeasure(
+                    View.MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
         }
 
         @Override
@@ -99,6 +140,9 @@ public class DoodleView extends FrameLayout {
             return super.dispatchTouchEvent(event);
         }
 
+        public void setAspectRadio(int aspectWidth, int aspectHeight) {
+
+        }
     }
 
     private class TextureListener implements TextureView.SurfaceTextureListener {
@@ -116,8 +160,8 @@ public class DoodleView extends FrameLayout {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             CommonLog.d(TAG + " onSurfaceTextureAvailable width:" + width + ", height:" + height);
-            mRender.setEnable(true);
-            mRender.setSize(width, height);
+            mRender.init(width, height);
+            mRender.setTextureEnable(true);
         }
 
         /**
@@ -131,7 +175,7 @@ public class DoodleView extends FrameLayout {
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
             CommonLog.d(TAG + " onSurfaceTextureSizeChanged width:" + width + ", height:" + height);
-            mRender.setSize(width, height);
+            mRender.init(width, height);
         }
 
         /**
@@ -145,8 +189,8 @@ public class DoodleView extends FrameLayout {
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
             CommonLog.d(TAG + " onSurfaceTextureDestroyed");
-            mRender.setEnable(false);
-            return false;
+            mRender.setTextureEnable(false);
+            return true;
         }
 
         /**
@@ -164,30 +208,23 @@ public class DoodleView extends FrameLayout {
     private class Render implements Available {
 
         private static final String TAG = "Render";
-        private boolean mInit;
 
-        private boolean mEnable;
-        private int mWidth;
-        private int mHeight;
+        // 画布的宽高比
+        private int mAspectWidth = 1;
+        private int mAspectHeight = 1;
+
+        private final Object mBufferLock = new Object();
+        private volatile CanvasBuffer mCanvasBuffer;
+
+        private boolean mTextureEnable;
+
         private final TaskQueue mTaskQueue = new TaskQueue(1);
 
         private ScaleGestureDetector mScaleGestureDetector;
         private GestureDetectorCompat mGestureDetectorCompat;
-        private LinkedList<Frame> mFrames = new LinkedList<>();
-        private ArrayList<Action> mActions = new ArrayList<>();
-
-        private Bitmap mBitmap; // 原始画布
-        private int mBitmapWidth; // 画布原始宽度
-        private int mBitmapHeight; // 画布原始高度
-        private Canvas mBitmapCanvas; // 原始画布
-        private Matrix mMatrix = new Matrix();
 
         private static final float MAX_SCALE = 2.0f;
         private static final float MIN_SCALE = 0.75f;
-
-        private float mScale = 1f;
-        private float mTranslateX = 0f;
-        private float mTrasnlateY = 0f;
 
         private final Paint mPaint;
 
@@ -199,36 +236,150 @@ public class DoodleView extends FrameLayout {
             mPaint = new Paint();
         }
 
-        private void init() {
-            if (mInit) {
-                return;
+        private void setAspectRatio(int aspectWidth, int aspectHeight) {
+            synchronized (mBufferLock) {
+                mCanvasBuffer = null;
+                mAspectWidth = aspectWidth;
+                mAspectHeight = aspectHeight;
             }
-
-            if (!mEnable || mWidth <= 0 || mHeight <= 0) {
-                return;
-            }
-
-            mBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.ARGB_8888);
-            mBitmapWidth = mBitmap.getWidth();
-            mBitmapHeight = mBitmap.getHeight();
-            mBitmapCanvas = new Canvas(mBitmap);
-
-            mInit = true;
         }
 
-        private void clear() {
-            if (mInit) {
-                mInit = false;
-                mBitmap = null;
-                mBitmapWidth = -1;
-                mBitmapHeight = -1;
-                mBitmapCanvas = null;
+        private void init(int width, int height) {
+            synchronized (mBufferLock) {
+                if (mCanvasBuffer != null) {
+                    CommonLog.d(TAG + " canvas buffer found [" + mAspectWidth + ", " + mAspectHeight + "]:[" + width + ", " + height + "]");
+                    return;
+                }
+
+                // 校验宽高比是否匹配
+                if (mAspectWidth * height != mAspectHeight * width) {
+                    CommonLog.d(TAG + " aspect radio not match , [" + mAspectWidth + ", " + mAspectHeight + "]:[" + width + ", " + height + "]");
+                    return;
+                }
+                mCanvasBuffer = new CanvasBuffer(width, height);
+            }
+        }
+
+        public void setTextureEnable(boolean textureEnable) {
+            mTextureEnable = textureEnable;
+        }
+
+        private class CanvasBuffer {
+
+            private static final String TAG = "Render$CanvasBuffer";
+            private static final int FRAMES_SIZE_MAX = 4;
+            // 关键帧之间至多间隔的 action 数量
+            private static final int FRAMES_STEP_INTERVAL_MAX = 8;
+            // 关键帧缓存图像
+            private final ArrayList<Frame> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
+            private final ArrayList<Action> mActions = new ArrayList<>();
+
+            private final Bitmap mBitmap; // 当前画布图像(绘画缓冲区)
+            private final int mBitmapWidth; // 当前画布图像宽度
+            private final int mBitmapHeight; // 当前画布图像高度
+            private final Canvas mBitmapCanvas; // 原始画布
+
+            public CanvasBuffer(int canvasWidth, int canvasHeight) {
+                mBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888);
+                mBitmapWidth = mBitmap.getWidth();
+                mBitmapHeight = mBitmap.getHeight();
+                mBitmapCanvas = new Canvas(mBitmap);
+            }
+
+            public void draw(Canvas canvas, Paint paint) {
+                CommonLog.d(TAG + " draw");
+                refreshBuffer(paint);
+                canvas.drawBitmap(mBitmap, 0f, 0f, paint);
+            }
+
+            // 重新绘制缓冲区
+            private void refreshBuffer(Paint paint) {
+                // 清空背景
+                mBitmapCanvas.drawColor(Color.WHITE);
+
+                // 取目前关键帧中的最后两个关键帧
+                Frame f1 = null; // 最后一个关键帧
+                Frame f2 = null; // 倒数第二个关键帧
+                int framesSize = mFrames.size();
+                if (framesSize > 1) {
+                    // 目前关键帧数量至少有两个
+                    f1 = mFrames.get(framesSize - 1);
+                    f2 = mFrames.get(framesSize - 2);
+                } else if (framesSize > 0) {
+                    // 目前关键帧只有一个
+                    f1 = mFrames.get(0);
+                    f2 = null;
+                }
+
+                // 绘画最后一个关键帧 (最后一个关键帧之前的图像不必重新绘画)
+                if (f1 != null) {
+                    f1.onDraw(mBitmapCanvas, paint);
+                }
+
+                int actionsSize = mActions.size();
+                // 绘画最后一个关键帧之后除最后一个动作外的所有动作
+                // 如果没有关键帧，则从第一个动作开始绘画
+                boolean foundActionsAfterLastFrame = false;
+                int actionIndexStart = -1;
+                if (f1 != null) {
+                    actionIndexStart = f1.actionIndex;
+                }
+                for (int i = actionIndexStart + 1; i < actionsSize - 1; i++) {
+                    foundActionsAfterLastFrame = true;
+                    mActions.get(i).onDraw(mBitmapCanvas, mPaint);
+                }
+
+                if (foundActionsAfterLastFrame) {
+                    // 将目前的图像存储为一个新的关键帧(该关键帧与最终图像只差最后一个动作)
+
+                    // 如果最后一个关键帧可以覆盖，则复用最后一个关键帧的内存
+                    boolean reuseLastFrame = false;
+                    if (f1 != null) {
+                        if (f2 == null && f1.actionIndex < FRAMES_STEP_INTERVAL_MAX) {
+                            reuseLastFrame = true;
+                        } else if (f2 != null && f1.actionIndex - f2.actionIndex < FRAMES_STEP_INTERVAL_MAX) {
+                            reuseLastFrame = true;
+                        }
+                    }
+
+                    Bitmap lastFrameBitmap;
+                    if (reuseLastFrame) {
+                        lastFrameBitmap = f1.bitmap;
+                    } else {
+                        lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.RGB_565);
+                    }
+                    new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, paint);
+                    Frame lastestFrame = new Frame(actionsSize - 1, lastFrameBitmap);
+
+                    if (reuseLastFrame) {
+                        mFrames.set(framesSize - 1, lastestFrame);
+                    } else {
+                        if (framesSize >= FRAMES_SIZE_MAX) {
+                            // 关键帧过多，删除第一个，依次向前移动，新的关键帧放到最后一个位置
+                            for (int i = 0; i < framesSize - 1; i++) {
+                                mFrames.set(i, mFrames.get(i + 1));
+                            }
+                            mFrames.set(framesSize - 1, lastestFrame);
+                        } else {
+                            mFrames.add(lastestFrame);
+                        }
+                    }
+                }
+
+                // 绘画最后一个动作
+                if (actionsSize > 0) {
+                    mActions.get(actionsSize - 1).onDraw(mBitmapCanvas, paint);
+                }
+            }
+
+            public void addAction(Action action) {
+                mActions.add(action);
             }
         }
 
         @Override
         public boolean isAvailable() {
-            return mInit && mEnable && mWidth > 0 && mHeight > 0;
+            return mTextureEnable && mCanvasBuffer != null;
         }
 
         private class RenderScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
@@ -237,6 +388,7 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
                     return false;
                 }
@@ -244,13 +396,13 @@ public class DoodleView extends FrameLayout {
                 CommonLog.d(TAG + " onScale scaleFactor");
 
                 // 缩放画布
-                int d = mWidth / 2;
+                int d = canvasBuffer.mBitmapWidth / 2;
                 float pre = detector.getPreviousSpan();
                 float cur = detector.getCurrentSpan();
                 float focusX = detector.getFocusX();
                 float focusY = detector.getFocusY();
-                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= mWidth || focusY >= mHeight) {
-                    CommonLog.d(TAG + " onScale ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + mWidth + ", height:" + mHeight);
+                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= canvasBuffer.mBitmapWidth || focusY >= canvasBuffer.mBitmapHeight) {
+                    CommonLog.d(TAG + " onScale ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + canvasBuffer.mBitmapWidth + ", height:" + canvasBuffer.mBitmapHeight);
                     return false;
                 }
                 if (cur > pre) {
@@ -284,6 +436,7 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
                     return false;
                 }
@@ -291,13 +444,13 @@ public class DoodleView extends FrameLayout {
                 CommonLog.d(TAG + " onScaleBegin scaleFactor");
 
                 // 开始缩放画布, 计算缩放点
-                int d = mWidth / 2;
+                int d = canvasBuffer.mBitmapWidth / 2;
                 float pre = detector.getPreviousSpan();
                 float cur = detector.getCurrentSpan();
                 float focusX = detector.getFocusX();
                 float focusY = detector.getFocusY();
-                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= mWidth || focusY >= mHeight) {
-                    CommonLog.d(TAG + " onScaleBegin ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + mWidth + ", height:" + mHeight);
+                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= canvasBuffer.mBitmapWidth || focusY >= canvasBuffer.mBitmapHeight) {
+                    CommonLog.d(TAG + " onScaleBegin ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + canvasBuffer.mBitmapWidth + ", height:" + canvasBuffer.mBitmapHeight);
                     return false;
                 }
 
@@ -330,6 +483,24 @@ public class DoodleView extends FrameLayout {
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
                 CommonLog.d(TAG + " onSingleTapUp " + e);
+                // 换算坐标 将 root 上的坐标映射到 texture view 上
+
+                float x = e.getX();
+                float y = e.getY();
+                float tx = mTextureView.getTranslationX();
+                float ty = mTextureView.getTranslationY();
+                float scale = mTextureView.getScaleX();
+                int left = mTextureView.getLeft();
+                int top = mTextureView.getTop();
+                int right = mTextureView.getRight();
+                int bottom = mTextureView.getBottom();
+                float textureX = mTextureView.getX();
+                float textureY = mTextureView.getY();
+                int width = mTextureView.getWidth();
+                int height = mTextureView.getHeight();
+
+                CommonLog.d(TAG + " (" + x + ", " + y + ") mTextureView info tx:" + tx + ", ty:" + ty + ", scale:" + scale + ", ltrb[" + left + ", " + top + ", " + right + ", " + bottom + "], xy[" + textureX + ", " + textureY + "], wh[" + width + ", " + height + "]");
+
                 mRender.enqueueAction(new PointAction(e.getX(), e.getY(), Color.RED, 30));
                 return true;
             }
@@ -364,6 +535,7 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public void run() {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
                     CommonLog.d(TAG + " available is false, ignore");
                     return;
@@ -377,13 +549,14 @@ public class DoodleView extends FrameLayout {
                         return;
                     }
 
-                    // 在原始画布上绘画
-                    draw(mBitmapCanvas);
-                    drawTest(mBitmapCanvas);
+                    // 清空背景
+                    canvas.drawColor(Color.TRANSPARENT);
 
-                    // 将原始画布中的内容绘画到 canvas 上
-                    canvas.drawColor(Color.WHITE);
-                    canvas.drawBitmap(mBitmap, 0, 0, mPaint);
+                    // 将缓冲区中的内容绘画到 canvas 上
+                    canvasBuffer.draw(canvas, mPaint);
+
+                    // 绘画测试内容
+                    drawTest(canvas);
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
@@ -416,7 +589,12 @@ public class DoodleView extends FrameLayout {
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
-                    mActions.add(action);
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore action " + action);
+                        return;
+                    }
+                    canvasBuffer.addAction(action);
                 }
             });
             postInvalidate();
@@ -430,8 +608,13 @@ public class DoodleView extends FrameLayout {
          * 帧图像
          */
         private class Frame extends Renderable {
-            int actionIndex; // 该帧对应的 action index, 第一帧从 0 开始
-            Bitmap bitmap; // 从起始到该 action index (包含) 所有动作绘画完成之后的图像
+            final int actionIndex; // 该帧对应的 action index, 第一帧从 0 开始
+            final Bitmap bitmap; // 从起始到该 action index (包含) 所有动作绘画完成之后的图像
+
+            private Frame(int actionIndex, Bitmap bitmap) {
+                this.actionIndex = actionIndex;
+                this.bitmap = bitmap;
+            }
 
             @Override
             public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
@@ -475,21 +658,6 @@ public class DoodleView extends FrameLayout {
             }
         }
 
-        public void setEnable(boolean enable) {
-            mEnable = enable;
-            if (mEnable) {
-                init();
-            } else {
-                clear();
-            }
-        }
-
-        public void setSize(int width, int height) {
-            mWidth = width;
-            mHeight = height;
-            init();
-        }
-
         public boolean onTouchEvent(MotionEvent event) {
             if (!isAvailable()) {
                 return false;
@@ -500,28 +668,6 @@ public class DoodleView extends FrameLayout {
                 mGestureDetectorCompat.onTouchEvent(event);
             }
             return true;
-        }
-
-        private void draw(Canvas canvas) {
-            CommonLog.d(TAG + " draw");
-            // 清空背景
-            canvas.drawColor(Color.WHITE);
-
-            // 从上一个关键帧开始绘画
-            int actionIndex = -1;
-
-            // 绘画上一个关键帧
-            Frame frame = mFrames.peekLast();
-            if (frame != null) {
-                actionIndex = frame.actionIndex;
-                frame.onDraw(canvas, mPaint);
-            }
-
-            // 绘画该关键帧之后的所有动作
-            int size = mActions.size();
-            for (int i = actionIndex + 1; i < size; i++) {
-                mActions.get(i).onDraw(canvas, mPaint);
-            }
         }
 
     }
