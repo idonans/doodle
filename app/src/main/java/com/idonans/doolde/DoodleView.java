@@ -73,6 +73,8 @@ public class DoodleView extends FrameLayout {
         addView(mRootView, rootViewLayouts);
 
         mTextureView.setSurfaceTextureListener(new TextureListener());
+
+        setAspectRatio(3, 4);
     }
 
     /**
