@@ -57,6 +57,7 @@ public class DoodleView extends FrameLayout {
         init();
     }
 
+    private static final String TAG = "DoodleView";
     private Render mRender;
     private RootView mRootView;
     private TextureView mTextureView;
@@ -73,6 +74,14 @@ public class DoodleView extends FrameLayout {
         addView(mRootView, rootViewLayouts);
 
         mTextureView.setSurfaceTextureListener(new TextureListener());
+        mTextureView.setOnTouchListener(new OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                CommonLog.d(TAG + " texture onTouch " + event);
+                mRender.onTouchEvent(event);
+                return true;
+            }
+        });
 
         setAspectRatio(3, 4);
     }
@@ -131,28 +140,6 @@ public class DoodleView extends FrameLayout {
                     View.MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
         }
 
-        @Override
-        public boolean onTouchEvent(MotionEvent event) {
-            CommonLog.d(TAG + " onTouchEvent " + event);
-            mRender.onTouchEvent(event);
-            return true;
-        }
-
-        @Override
-        public boolean onInterceptTouchEvent(MotionEvent event) {
-            CommonLog.d(TAG + " onInterceptTouchEvent " + event);
-            return true;
-        }
-
-        @Override
-        public boolean dispatchTouchEvent(MotionEvent event) {
-            CommonLog.d(TAG + " dispatchTouchEvent " + event);
-            return super.dispatchTouchEvent(event);
-        }
-
-        public void setAspectRadio(int aspectWidth, int aspectHeight) {
-
-        }
     }
 
     private class TextureListener implements TextureView.SurfaceTextureListener {
@@ -464,8 +451,11 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                mTextureView.setPivotX(focusX);
-                mTextureView.setPivotY(focusY);
+                float px = mTextureView.getPivotX();
+                float py = mTextureView.getPivotY();
+                // mTextureView.setPivotX(focusX);
+                // mTextureView.setPivotY(focusY);
+                CommonLog.d(TAG + " onScaleBegin px:" + px + ", py:" + py);
                 return true;
             }
 
@@ -560,7 +550,7 @@ public class DoodleView extends FrameLayout {
                     }
 
                     // 清空背景
-                    canvas.drawColor(Color.TRANSPARENT);
+                    canvas.drawColor(Color.WHITE);
 
                     // 将缓冲区中的内容绘画到 canvas 上
                     canvasBuffer.draw(canvas, mPaint);
