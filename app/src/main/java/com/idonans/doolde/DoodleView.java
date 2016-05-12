@@ -48,7 +48,6 @@ public class DoodleView extends FrameLayout {
     public DoodleView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
-
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
@@ -74,12 +73,17 @@ public class DoodleView extends FrameLayout {
         addView(mRootView, rootViewLayouts);
 
         mTextureView.setSurfaceTextureListener(new TextureListener());
-        mTextureView.setOnTouchListener(new OnTouchListener() {
+        mTextureView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 CommonLog.d(TAG + " texture onTouch " + event);
-                mRender.onTouchEvent(event);
-                return true;
+                return mRender.onActionTouchEvent(event);
+            }
+        });
+        mRootView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return mRender.onCanvasTouchEvent(event);
             }
         });
 
@@ -217,15 +221,18 @@ public class DoodleView extends FrameLayout {
 
         private final TaskQueue mTaskQueue = new TaskQueue(1);
 
-        private ScaleGestureDetector mScaleGestureDetector;
-        private GestureDetectorCompat mGestureDetectorCompat;
+        private final ScaleGestureDetector mCanvasScaleGestureDetector;
+        private final GestureDetectorCompat mCanvasTranslationGestureDetectorCompat;
+        private final GestureDetectorCompat mTextureActionGestureDetectorCompat;
 
         private final Paint mPaint;
 
         private Render(Context context) {
-            mScaleGestureDetector = new ScaleGestureDetector(context, new RenderScaleGestureListener());
-            mGestureDetectorCompat = new GestureDetectorCompat(context, new RenderGestureListener());
-            mGestureDetectorCompat.setIsLongpressEnabled(false);
+            mCanvasScaleGestureDetector = new ScaleGestureDetector(context, new CanvasScaleGestureListener());
+            mCanvasTranslationGestureDetectorCompat = new GestureDetectorCompat(context, new CanvasTranslationGestureListener());
+            mCanvasTranslationGestureDetectorCompat.setIsLongpressEnabled(false);
+            mTextureActionGestureDetectorCompat = new GestureDetectorCompat(context, new TextureActionGestureListener());
+            mTextureActionGestureDetectorCompat.setIsLongpressEnabled(false);
 
             mPaint = new Paint();
         }
@@ -257,6 +264,217 @@ public class DoodleView extends FrameLayout {
         public void setTextureEnable(boolean textureEnable) {
             mTextureEnable = textureEnable;
         }
+
+        @Override
+        public boolean isAvailable() {
+            return mTextureEnable && mCanvasBuffer != null;
+        }
+
+        private class CanvasScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+
+            private static final String TAG = "Render$CanvasScaleGestureListener";
+
+            private static final float MAX_SCALE = 2.75f;
+            private static final float MIN_SCALE = 0.75f;
+
+            private float mFocusX;
+            private float mFocusY;
+
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                if (!isAvailable()) {
+                    return false;
+                }
+
+                float scaleFactor = detector.getScaleFactor();
+                float oldScale = mTextureView.getScaleX();
+                float targetScale = oldScale * scaleFactor;
+
+                if (targetScale >= oldScale && oldScale >= MAX_SCALE) {
+                    return false;
+                }
+
+                if (targetScale <= oldScale && oldScale <= MIN_SCALE) {
+                    return false;
+                }
+
+                if (targetScale > MAX_SCALE) {
+                    targetScale = MAX_SCALE;
+                }
+                if (targetScale < MIN_SCALE) {
+                    targetScale = MIN_SCALE;
+                }
+
+                mTextureView.setPivotX(mFocusX);
+                mTextureView.setPivotY(mFocusY);
+
+                mTextureView.setScaleX(targetScale);
+                mTextureView.setScaleY(targetScale);
+
+                return true;
+            }
+
+            @Override
+            public boolean onScaleBegin(ScaleGestureDetector detector) {
+                if (!isAvailable()) {
+                    return false;
+                }
+
+                mFocusX = detector.getFocusX();
+                mFocusY = detector.getFocusY();
+
+                return true;
+            }
+
+        }
+
+        private class CanvasTranslationGestureListener implements GestureDetector.OnGestureListener {
+
+            private static final String TAG = "Render$CanvasTranslationGestureListener";
+
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent e) {
+            }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                return false;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                CommonLog.d(TAG + " onScroll e1 " + e1 + ", e2 " + e2 + ", distanceX:" + distanceX + ", distanceY:" + distanceY);
+
+                if (e2.getPointerCount() > 1) {
+                    // TODO 多指移动画布
+
+                    return true;
+                }
+
+                return false;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                return false;
+            }
+
+        }
+
+        private class TextureActionGestureListener implements GestureDetector.OnGestureListener {
+            private static final String TAG = "Render$TextureActionGestureListener";
+
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent e) {
+            }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                enqueueAction(new PointAction(e.getX(), e.getY(), Color.RED, 50));
+                return true;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                // TODO Action 处理
+                return false;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                return false;
+            }
+        }
+
+        private class Draw implements Runnable {
+
+            private static final String TAG = "Render$Draw";
+
+            @Override
+            public void run() {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
+                if (!isAvailable()) {
+                    CommonLog.d(TAG + " available is false, ignore");
+                    return;
+                }
+
+                Canvas canvas = null;
+                try {
+                    canvas = mTextureView.lockCanvas();
+                    if (canvas == null) {
+                        CommonLog.d(TAG + " canvas is null, ignore");
+                        return;
+                    }
+
+                    // 清空背景
+                    canvas.drawColor(Color.WHITE);
+
+                    // 将缓冲区中的内容绘画到 canvas 上
+                    canvasBuffer.draw(canvas, mPaint);
+
+                    // 绘画测试内容
+                    drawTest(canvas);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    if (canvas != null) {
+                        mTextureView.unlockCanvasAndPost(canvas);
+                    }
+                }
+            }
+
+        }
+
+        /**
+         * test method
+         */
+        private void drawTest(Canvas canvas) {
+            // test code
+            mPaint.setColor(Color.BLACK);
+            mPaint.setTextSize(30);
+            canvas.drawText("time:" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()), 50, 200, mPaint);
+            mPaint.setColor(Color.DKGRAY);
+            mPaint.setTextSize(50);
+            canvas.drawText("test draw", 50, 400, mPaint);
+        }
+
+        public void postInvalidate() {
+            mTaskQueue.enqueue(new Draw());
+        }
+
+        public void enqueueAction(final Action action) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore action " + action);
+                        return;
+                    }
+                    canvasBuffer.addAction(action);
+                }
+            });
+            postInvalidate();
+        }
+
 
         private class CanvasBuffer {
 
@@ -371,185 +589,6 @@ public class DoodleView extends FrameLayout {
             }
         }
 
-        @Override
-        public boolean isAvailable() {
-            return mTextureEnable && mCanvasBuffer != null;
-        }
-
-        private class RenderScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
-
-            private static final String TAG = "Render$RenderScaleGestureListener";
-
-            private static final float MAX_SCALE = 1.5f;
-            private static final float MIN_SCALE = 0.75f;
-
-            private float mFocusX = -1f;
-            private float mFocusY = -1f;
-
-            @Override
-            public boolean onScale(ScaleGestureDetector detector) {
-                if (!isAvailable()) {
-                    return false;
-                }
-
-                float scaleFactor = detector.getScaleFactor();
-                float oldScale = mTextureView.getScaleX();
-                float targetScale = oldScale * scaleFactor;
-
-                if (targetScale >= oldScale && oldScale >= MAX_SCALE) {
-                    return false;
-                }
-
-                if (targetScale <= oldScale && oldScale <= MIN_SCALE) {
-                    return false;
-                }
-
-                if (targetScale > MAX_SCALE) {
-                    targetScale = MAX_SCALE;
-                }
-                if (targetScale < MIN_SCALE) {
-                    targetScale = MIN_SCALE;
-                }
-
-                mTextureView.setPivotX(mFocusX);
-                mTextureView.setPivotY(mFocusY);
-
-                mTextureView.setScaleX(targetScale);
-                mTextureView.setScaleY(targetScale);
-
-                return true;
-            }
-
-            @Override
-            public boolean onScaleBegin(ScaleGestureDetector detector) {
-                if (!isAvailable()) {
-                    return false;
-                }
-
-                mFocusX = detector.getFocusX();
-                mFocusY = detector.getFocusY();
-
-                return true;
-            }
-
-        }
-
-        private class RenderGestureListener implements GestureDetector.OnGestureListener {
-
-            private static final String TAG = "Render$RenderGestureListener";
-
-            @Override
-            public boolean onDown(MotionEvent e) {
-                CommonLog.d(TAG + " onDown " + e);
-                return true;
-            }
-
-            @Override
-            public void onShowPress(MotionEvent e) {
-            }
-
-            @Override
-            public boolean onSingleTapUp(MotionEvent e) {
-                CommonLog.d(TAG + " onSingleTapUp " + e);
-                mRender.enqueueAction(new PointAction(e.getX(), e.getY(), Color.RED, 30));
-                return true;
-            }
-
-            @Override
-            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                CommonLog.d(TAG + " onScroll e1 " + e1 + ", e2 " + e2 + ", distanceX:" + distanceX + ", distanceY:" + distanceY);
-
-                if (e2.getPointerCount() > 1) {
-                    // 多指移动画布
-
-                    // TODO
-                }
-
-                return true;
-            }
-
-            @Override
-            public void onLongPress(MotionEvent e) {
-            }
-
-            @Override
-            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-                return false;
-            }
-
-        }
-
-        private class Draw implements Runnable {
-
-            private static final String TAG = "Render$Draw";
-
-            @Override
-            public void run() {
-                CanvasBuffer canvasBuffer = mCanvasBuffer;
-                if (!isAvailable()) {
-                    CommonLog.d(TAG + " available is false, ignore");
-                    return;
-                }
-
-                Canvas canvas = null;
-                try {
-                    canvas = mTextureView.lockCanvas();
-                    if (canvas == null) {
-                        CommonLog.d(TAG + " canvas is null, ignore");
-                        return;
-                    }
-
-                    // 清空背景
-                    canvas.drawColor(Color.WHITE);
-
-                    // 将缓冲区中的内容绘画到 canvas 上
-                    canvasBuffer.draw(canvas, mPaint);
-
-                    // 绘画测试内容
-                    drawTest(canvas);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    if (canvas != null) {
-                        mTextureView.unlockCanvasAndPost(canvas);
-                    }
-                }
-            }
-
-        }
-
-        /**
-         * test method
-         */
-        private void drawTest(Canvas canvas) {
-            // test code
-            mPaint.setColor(Color.BLACK);
-            mPaint.setTextSize(30);
-            canvas.drawText("time:" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()), 50, 200, mPaint);
-            mPaint.setColor(Color.DKGRAY);
-            mPaint.setTextSize(50);
-            canvas.drawText("test draw", 50, 400, mPaint);
-        }
-
-        public void postInvalidate() {
-            mTaskQueue.enqueue(new Draw());
-        }
-
-        public void enqueueAction(final Action action) {
-            mTaskQueue.enqueue(new Runnable() {
-                @Override
-                public void run() {
-                    CanvasBuffer canvasBuffer = mCanvasBuffer;
-                    if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore action " + action);
-                        return;
-                    }
-                    canvasBuffer.addAction(action);
-                }
-            });
-            postInvalidate();
-        }
-
         private abstract class Renderable {
             public abstract void onDraw(@NonNull Canvas canvas, @NonNull Paint paint);
         }
@@ -608,14 +647,28 @@ public class DoodleView extends FrameLayout {
             }
         }
 
-        public boolean onTouchEvent(MotionEvent event) {
+        /**
+         * 画布缩放和移动手势
+         */
+        public boolean onCanvasTouchEvent(MotionEvent event) {
             if (!isAvailable()) {
                 return false;
             }
 
-            mScaleGestureDetector.onTouchEvent(event);
-            mGestureDetectorCompat.onTouchEvent(event);
-            return true;
+            boolean handle = mCanvasScaleGestureDetector.onTouchEvent(event);
+            handle |= mCanvasTranslationGestureDetectorCompat.onTouchEvent(event);
+            return handle;
+        }
+
+        /**
+         * 绘画手势
+         */
+        public boolean onActionTouchEvent(MotionEvent event) {
+            if (!isAvailable()) {
+                return false;
+            }
+
+            return mTextureActionGestureDetectorCompat.onTouchEvent(event);
         }
 
     }
