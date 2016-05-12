@@ -392,10 +392,6 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                if (mFocusX < 0 || mFocusY < 0) {
-                    return false;
-                }
-
                 float scaleFactor = detector.getScaleFactor();
                 float oldScale = mScale;
                 float targetScale = oldScale * scaleFactor;
@@ -434,10 +430,6 @@ public class DoodleView extends FrameLayout {
 
                 mFocusX = detector.getFocusX();
                 mFocusY = detector.getFocusY();
-
-                if (mFocusX < 0 || mFocusY < 0) {
-                    return false;
-                }
 
                 return true;
             }
