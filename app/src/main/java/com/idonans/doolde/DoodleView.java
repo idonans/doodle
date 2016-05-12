@@ -106,6 +106,9 @@ public class DoodleView extends FrameLayout {
             int targetWidth = originalWidth;
             int targetHeight = Float.valueOf(1f * targetWidth * mRender.mAspectHeight / mRender.mAspectWidth).intValue();
             if (targetHeight <= originalHeight) {
+                // 调整，使得宽高比完美匹配
+                targetWidth -= targetWidth % mRender.mAspectWidth;
+                targetHeight = targetWidth * mRender.mAspectHeight / mRender.mAspectWidth;
                 super.onMeasure(
                         View.MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
@@ -118,6 +121,11 @@ public class DoodleView extends FrameLayout {
             if (targetWidth > originalWidth) {
                 throw new RuntimeException("measure error");
             }
+
+            // 调整，使得宽高比完美匹配
+            targetHeight -= targetHeight % mRender.mAspectHeight;
+            targetWidth = targetHeight * mRender.mAspectWidth / mRender.mAspectHeight;
+
             super.onMeasure(
                     View.MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
