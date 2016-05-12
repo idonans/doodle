@@ -382,86 +382,51 @@ public class DoodleView extends FrameLayout {
         private class RenderScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
 
             private static final String TAG = "Render$RenderScaleGestureListener";
+            private float mFocusX;
+            private float mFocusY;
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-                CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
                     return false;
                 }
 
-                CommonLog.d(TAG + " onScale scaleFactor");
+                float scaleFactor = detector.getScaleFactor();
+                float oldScale = mTextureView.getScaleX();
+                float targetScale = oldScale * scaleFactor;
 
-                // 缩放画布
-                int d = canvasBuffer.mBitmapWidth / 2;
-                float pre = detector.getPreviousSpan();
-                float cur = detector.getCurrentSpan();
-                float focusX = detector.getFocusX();
-                float focusY = detector.getFocusY();
-                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= canvasBuffer.mBitmapWidth || focusY >= canvasBuffer.mBitmapHeight) {
-                    CommonLog.d(TAG + " onScale ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + canvasBuffer.mBitmapWidth + ", height:" + canvasBuffer.mBitmapHeight);
+                if (targetScale >= oldScale && oldScale >= MAX_SCALE) {
                     return false;
                 }
-                if (cur > pre) {
-                    // 放大
-                    float dx = cur - pre;
-                    float ds = dx / d;
-                    float textureScale = mTextureView.getScaleX();
-                    float targetScale = textureScale + ds;
-                    CommonLog.d(TAG + " scale up targetScale:" + targetScale + ", textureScale:" + textureScale + ", ds:" + ds + ", d:" + d + ", cur:" + cur + ", pre:" + pre + ", dx:" + dx);
-                    if (targetScale > MAX_SCALE) {
-                        targetScale = MAX_SCALE;
-                    }
-                    mTextureView.setScaleX(targetScale);
-                    mTextureView.setScaleY(targetScale);
-                } else if (cur < pre) {
-                    // 缩小
-                    float dx = pre - cur;
-                    float ds = dx / d;
-                    float textureScale = mTextureView.getScaleX();
-                    float targetScale = textureScale - ds;
-                    CommonLog.d(TAG + " scale down targetScale:" + targetScale + ", textureScale:" + textureScale + ", ds:" + ds + ", d:" + d + ", cur:" + cur + ", pre:" + pre + ", dx:" + dx);
-                    if (targetScale < MIN_SCALE) {
-                        targetScale = MIN_SCALE;
-                    }
-                    mTextureView.setScaleX(targetScale);
-                    mTextureView.setScaleY(targetScale);
+
+                if (targetScale <= oldScale && oldScale <= MIN_SCALE) {
+                    return false;
                 }
 
+                if (targetScale > MAX_SCALE) {
+                    targetScale = MAX_SCALE;
+                }
+                if (targetScale < MIN_SCALE) {
+                    targetScale = MIN_SCALE;
+                }
+
+                mTextureView.setPivotX(mFocusX);
+                mTextureView.setPivotY(mFocusY);
+
+                mTextureView.setScaleX(targetScale);
+                mTextureView.setScaleY(targetScale);
                 return true;
             }
 
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
-                CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
                     return false;
                 }
 
-                CommonLog.d(TAG + " onScaleBegin scaleFactor");
-
-                // 开始缩放画布, 计算缩放点
-                int d = canvasBuffer.mBitmapWidth / 2;
-                float pre = detector.getPreviousSpan();
-                float cur = detector.getCurrentSpan();
-                float focusX = detector.getFocusX();
-                float focusY = detector.getFocusY();
-                if (d <= 0 || pre <= 0 || cur <= 0 || focusX <= 0 || focusY <= 0 || focusX >= canvasBuffer.mBitmapWidth || focusY >= canvasBuffer.mBitmapHeight) {
-                    CommonLog.d(TAG + " onScaleBegin ignore, d:" + d + ", pre:" + pre + ", cur:" + cur + ", focusX:" + focusX + ", focusY:" + focusY + ", width:" + canvasBuffer.mBitmapWidth + ", height:" + canvasBuffer.mBitmapHeight);
-                    return false;
-                }
-
-                float px = mTextureView.getPivotX();
-                float py = mTextureView.getPivotY();
-                // mTextureView.setPivotX(focusX);
-                // mTextureView.setPivotY(focusY);
-                CommonLog.d(TAG + " onScaleBegin px:" + px + ", py:" + py);
+                mFocusX = detector.getFocusX();
+                mFocusY = detector.getFocusY();
                 return true;
-            }
-
-            @Override
-            public void onScaleEnd(ScaleGestureDetector detector) {
-                CommonLog.d(TAG + " onScaleEnd scaleFactor");
             }
 
         }
@@ -483,24 +448,6 @@ public class DoodleView extends FrameLayout {
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
                 CommonLog.d(TAG + " onSingleTapUp " + e);
-                // 换算坐标 将 root 上的坐标映射到 texture view 上
-
-                float x = e.getX();
-                float y = e.getY();
-                float tx = mTextureView.getTranslationX();
-                float ty = mTextureView.getTranslationY();
-                float scale = mTextureView.getScaleX();
-                int left = mTextureView.getLeft();
-                int top = mTextureView.getTop();
-                int right = mTextureView.getRight();
-                int bottom = mTextureView.getBottom();
-                float textureX = mTextureView.getX();
-                float textureY = mTextureView.getY();
-                int width = mTextureView.getWidth();
-                int height = mTextureView.getHeight();
-
-                CommonLog.d(TAG + " (" + x + ", " + y + ") mTextureView info tx:" + tx + ", ty:" + ty + ", scale:" + scale + ", ltrb[" + left + ", " + top + ", " + right + ", " + bottom + "], xy[" + textureX + ", " + textureY + "], wh[" + width + ", " + height + "]");
-
                 mRender.enqueueAction(new PointAction(e.getX(), e.getY(), Color.RED, 30));
                 return true;
             }
@@ -511,8 +458,7 @@ public class DoodleView extends FrameLayout {
 
                 if (e2.getPointerCount() > 1) {
                     // 多指移动画布
-                    mTextureView.setTranslationX(mTextureView.getTranslationX() - distanceX);
-                    mTextureView.setTranslationY(mTextureView.getTranslationY() - distanceY);
+                    // TODO
                 }
 
                 return true;
@@ -664,9 +610,7 @@ public class DoodleView extends FrameLayout {
             }
 
             mScaleGestureDetector.onTouchEvent(event);
-            if (!mScaleGestureDetector.isInProgress()) {
-                mGestureDetectorCompat.onTouchEvent(event);
-            }
+            mGestureDetectorCompat.onTouchEvent(event);
             return true;
         }
 
