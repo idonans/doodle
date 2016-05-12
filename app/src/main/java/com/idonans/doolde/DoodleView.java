@@ -359,7 +359,7 @@ public class DoodleView extends FrameLayout {
                         lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.RGB_565);
                     }
                     new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, paint);
-                    Frame lastestFrame = new Frame(actionsSize - 1, lastFrameBitmap);
+                    Frame lastestFrame = new Frame(actionsSize - 2, lastFrameBitmap);
 
                     if (reuseLastFrame) {
                         mFrames.set(framesSize - 1, lastestFrame);
