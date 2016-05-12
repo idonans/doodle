@@ -10,6 +10,7 @@ import android.graphics.SurfaceTexture;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.view.GestureDetectorCompat;
+import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.Gravity;
@@ -83,6 +84,7 @@ public class DoodleView extends FrameLayout {
         mRootView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                CommonLog.d(TAG + " root onTouch " + event);
                 return mRender.onCanvasTouchEvent(event);
             }
         });
@@ -668,6 +670,9 @@ public class DoodleView extends FrameLayout {
                 return false;
             }
 
+            if (MotionEventCompat.getPointerCount(event) > 1) {
+                return false;
+            }
             return mTextureActionGestureDetectorCompat.onTouchEvent(event);
         }
 
