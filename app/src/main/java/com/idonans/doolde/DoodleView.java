@@ -380,7 +380,7 @@ public class DoodleView extends FrameLayout {
 
             private static final String TAG = "Render$RenderScaleGestureListener";
 
-            private static final float MAX_SCALE = 3.0f;
+            private static final float MAX_SCALE = 1.5f;
             private static final float MIN_SCALE = 0.75f;
 
             private float mFocusX = -1f;
