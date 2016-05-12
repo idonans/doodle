@@ -382,8 +382,9 @@ public class DoodleView extends FrameLayout {
         private class RenderScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
 
             private static final String TAG = "Render$RenderScaleGestureListener";
-            private float mFocusX;
-            private float mFocusY;
+            private float mScale = 1f;
+            private float mFocusX = -1f;
+            private float mFocusY = -1f;
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
@@ -391,8 +392,12 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
+                if (mFocusX < 0 || mFocusY < 0) {
+                    return false;
+                }
+
                 float scaleFactor = detector.getScaleFactor();
-                float oldScale = mTextureView.getScaleX();
+                float oldScale = mScale;
                 float targetScale = oldScale * scaleFactor;
 
                 if (targetScale >= oldScale && oldScale >= MAX_SCALE) {
@@ -410,11 +415,14 @@ public class DoodleView extends FrameLayout {
                     targetScale = MIN_SCALE;
                 }
 
+
                 mTextureView.setPivotX(mFocusX);
                 mTextureView.setPivotY(mFocusY);
 
                 mTextureView.setScaleX(targetScale);
                 mTextureView.setScaleY(targetScale);
+
+                mScale = targetScale;
                 return true;
             }
 
@@ -426,6 +434,11 @@ public class DoodleView extends FrameLayout {
 
                 mFocusX = detector.getFocusX();
                 mFocusY = detector.getFocusY();
+
+                if (mFocusX < 0 || mFocusY < 0) {
+                    return false;
+                }
+
                 return true;
             }
 
