@@ -220,9 +220,6 @@ public class DoodleView extends FrameLayout {
         private ScaleGestureDetector mScaleGestureDetector;
         private GestureDetectorCompat mGestureDetectorCompat;
 
-        private static final float MAX_SCALE = 2.0f;
-        private static final float MIN_SCALE = 0.75f;
-
         private final Paint mPaint;
 
         private Render(Context context) {
@@ -382,7 +379,10 @@ public class DoodleView extends FrameLayout {
         private class RenderScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
 
             private static final String TAG = "Render$RenderScaleGestureListener";
-            private float mScale = 1f;
+
+            private static final float MAX_SCALE = 3.0f;
+            private static final float MIN_SCALE = 0.75f;
+
             private float mFocusX = -1f;
             private float mFocusY = -1f;
 
@@ -393,7 +393,7 @@ public class DoodleView extends FrameLayout {
                 }
 
                 float scaleFactor = detector.getScaleFactor();
-                float oldScale = mScale;
+                float oldScale = mTextureView.getScaleX();
                 float targetScale = oldScale * scaleFactor;
 
                 if (targetScale >= oldScale && oldScale >= MAX_SCALE) {
@@ -411,14 +411,12 @@ public class DoodleView extends FrameLayout {
                     targetScale = MIN_SCALE;
                 }
 
-
                 mTextureView.setPivotX(mFocusX);
                 mTextureView.setPivotY(mFocusY);
 
                 mTextureView.setScaleX(targetScale);
                 mTextureView.setScaleY(targetScale);
 
-                mScale = targetScale;
                 return true;
             }
 
@@ -463,6 +461,7 @@ public class DoodleView extends FrameLayout {
 
                 if (e2.getPointerCount() > 1) {
                     // 多指移动画布
+
                     // TODO
                 }
 
