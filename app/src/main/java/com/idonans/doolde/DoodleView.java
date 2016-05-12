@@ -10,7 +10,6 @@ import android.graphics.SurfaceTexture;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.view.GestureDetectorCompat;
-import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.Gravity;
@@ -78,14 +77,14 @@ public class DoodleView extends FrameLayout {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 CommonLog.d(TAG + " texture onTouch " + event);
-                return mRender.onActionTouchEvent(event);
+                return mRender.onTextureTouchEvent(event);
             }
         });
         mRootView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 CommonLog.d(TAG + " root onTouch " + event);
-                return mRender.onCanvasTouchEvent(event);
+                return mRender.onRootTouchEvent(event);
             }
         });
 
@@ -650,30 +649,28 @@ public class DoodleView extends FrameLayout {
         }
 
         /**
-         * 画布缩放和移动手势
+         * root 上的触摸事件
          */
-        public boolean onCanvasTouchEvent(MotionEvent event) {
+        public boolean onRootTouchEvent(MotionEvent event) {
+            if (!isAvailable()) {
+                return false;
+            }
+
+            return mCanvasTranslationGestureDetectorCompat.onTouchEvent(event);
+        }
+
+        /**
+         * texture 上的触摸事件
+         */
+        public boolean onTextureTouchEvent(MotionEvent event) {
             if (!isAvailable()) {
                 return false;
             }
 
             boolean handle = mCanvasScaleGestureDetector.onTouchEvent(event);
-            handle |= mCanvasTranslationGestureDetectorCompat.onTouchEvent(event);
+            handle |= mTextureActionGestureDetectorCompat.onTouchEvent(event);
+
             return handle;
-        }
-
-        /**
-         * 绘画手势
-         */
-        public boolean onActionTouchEvent(MotionEvent event) {
-            if (!isAvailable()) {
-                return false;
-            }
-
-            if (MotionEventCompat.getPointerCount(event) > 1) {
-                return false;
-            }
-            return mTextureActionGestureDetectorCompat.onTouchEvent(event);
         }
 
     }
