@@ -351,7 +351,7 @@ public class DoodleView extends FrameLayout {
                     float oldTranslationY = mTextureView.getTranslationY();
 
                     float targetTranslationX = oldTranslationX - distanceX;
-                    float targetTranslationY = oldTranslationY + distanceY;
+                    float targetTranslationY = oldTranslationY - distanceY;
 
                     // TODO 计算移动边界 ?
                     mTextureView.setTranslationX(targetTranslationX);
