@@ -518,9 +518,9 @@ public class DoodleView extends FrameLayout {
                 float targetY = oldY - dy;
 
                 CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + dx + ", " + dy + "]) -> [" + targetX + ", " + targetY + "]");
-                // mMatrix.setTranslate(targetX, targetY);
                 mMatrix.postTranslate(-dx, -dy);
                 mTextureView.setTransform(mMatrix);
+                mTextureView.invalidate();
             }
 
             public void draw(Canvas canvas, Paint paint) {
