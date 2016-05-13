@@ -318,9 +318,6 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                mFocusX = detector.getFocusX();
-                mFocusY = detector.getFocusY();
-
                 return true;
             }
 
@@ -351,11 +348,22 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                CommonLog.d(TAG + " onScroll e1 " + e1 + ", e2 " + e2 + ", distanceX:" + distanceX + ", distanceY:" + distanceY);
-
                 if (e2.getPointerCount() > 1) {
-                    // TODO 多指移动画布
-                    canvasBuffer.translate(distanceX, distanceY);
+                    // 多指移动画布
+                    Matrix matrix = canvasBuffer.getMatrix();
+                    float[] values = new float[9];
+                    matrix.getValues(values);
+                    float oldX = values[Matrix.MTRANS_X];
+                    float oldY = values[Matrix.MTRANS_Y];
+
+                    float targetX = oldX - distanceX;
+                    float targetY = oldY - distanceY;
+
+                    // TODO 限制移动边界?
+
+                    CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + distanceX + ", " + distanceY + "]) -> [" + targetX + ", " + targetY + "]");
+                    matrix.postTranslate(-distanceX, -distanceY);
+                    canvasBuffer.setMatrix(matrix);
                     return true;
                 }
 
@@ -518,6 +526,11 @@ public class DoodleView extends FrameLayout {
                 mMatrixInvertTmp = new Matrix();
             }
 
+            public void setMatrix(Matrix matrix) {
+                mTextureView.setTransform(matrix);
+                mTextureView.postInvalidate();
+            }
+
             public Matrix getMatrix() {
                 mMatrixTmp.reset();
                 mTextureView.getTransform(mMatrixTmp);
@@ -528,22 +541,6 @@ public class DoodleView extends FrameLayout {
                 mMatrixInvertTmp.reset();
                 getMatrix().invert(mMatrixInvertTmp);
                 return mMatrixInvertTmp;
-            }
-
-            public void translate(float dx, float dy) {
-                Matrix matrix = getMatrix();
-                float[] values = new float[9];
-                matrix.getValues(values);
-                float oldX = values[Matrix.MTRANS_X];
-                float oldY = values[Matrix.MTRANS_Y];
-
-                float targetX = oldX - dx;
-                float targetY = oldY - dy;
-
-                CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + dx + ", " + dy + "]) -> [" + targetX + ", " + targetY + "]");
-                matrix.postTranslate(-dx, -dy);
-                mTextureView.setTransform(matrix);
-                mTextureView.invalidate();
             }
 
             public void draw(Canvas canvas, Paint paint) {
