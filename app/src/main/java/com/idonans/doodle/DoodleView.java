@@ -295,12 +295,14 @@ public class DoodleView extends FrameLayout {
 
                 if (targetScale >= oldScale && oldScale >= MAX_SCALE) {
                     // 已经最大，不需要再放大
-                    return false;
+                    // 需要返回 true, 后续可能有缩小手势
+                    return true;
                 }
 
                 if (targetScale <= oldScale && oldScale <= MIN_SCALE) {
                     // 已经最小，不需要再缩小
-                    return false;
+                    // 需要返回 true, 后续可能有放大手势
+                    return true;
                 }
 
                 if (targetScale > MAX_SCALE) {
