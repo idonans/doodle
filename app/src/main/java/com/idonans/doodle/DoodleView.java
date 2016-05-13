@@ -24,9 +24,7 @@ import com.idonans.acommon.lang.Available;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
@@ -450,9 +448,6 @@ public class DoodleView extends FrameLayout {
 
                     // 将缓冲区中的内容绘画到 canvas 上
                     canvasBuffer.draw(canvas, mPaint);
-
-                    // 绘画测试内容
-                    drawTest(canvas);
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
@@ -460,22 +455,8 @@ public class DoodleView extends FrameLayout {
                         mTextureView.unlockCanvasAndPost(canvas);
                     }
                 }
-                // mTextureView.setTransform(canvasBuffer.mMatrix);
             }
 
-        }
-
-        /**
-         * test method
-         */
-        private void drawTest(Canvas canvas) {
-            // test code
-            mPaint.setColor(Color.BLACK);
-            mPaint.setTextSize(30);
-            canvas.drawText("time:" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date()), 50, 200, mPaint);
-            mPaint.setColor(Color.DKGRAY);
-            mPaint.setTextSize(50);
-            canvas.drawText("test draw", 50, 400, mPaint);
         }
 
         public void postInvalidate() {
