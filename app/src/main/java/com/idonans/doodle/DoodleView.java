@@ -1,10 +1,11 @@
-package com.idonans.doolde;
+package com.idonans.doodle;
 
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
@@ -73,13 +74,6 @@ public class DoodleView extends FrameLayout {
         addView(mRootView, rootViewLayouts);
 
         mTextureView.setSurfaceTextureListener(new TextureListener());
-        mTextureView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                CommonLog.d(TAG + " texture onTouch " + event);
-                return mRender.onTextureTouchEvent(event);
-            }
-        });
 
         setAspectRatio(3, 4);
     }
@@ -98,6 +92,12 @@ public class DoodleView extends FrameLayout {
 
         public RootView(Context context) {
             super(context);
+        }
+
+        @Override
+        public boolean dispatchTouchEvent(MotionEvent event) {
+            mRender.onTouchEvent(event);
+            return true;
         }
 
         @Override
@@ -276,10 +276,12 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
                     return false;
                 }
 
+                /*
                 float scaleFactor = detector.getScaleFactor();
                 float oldScale = mTextureView.getScaleX();
                 float targetScale = oldScale * scaleFactor;
@@ -304,12 +306,14 @@ public class DoodleView extends FrameLayout {
 
                 mTextureView.setScaleX(targetScale);
                 mTextureView.setScaleY(targetScale);
+                */
 
                 return true;
             }
 
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
                     return false;
                 }
@@ -342,20 +346,16 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
+                if (!isAvailable()) {
+                    return false;
+                }
+
                 CommonLog.d(TAG + " onScroll e1 " + e1 + ", e2 " + e2 + ", distanceX:" + distanceX + ", distanceY:" + distanceY);
 
                 if (e2.getPointerCount() > 1) {
                     // TODO 多指移动画布
-
-                    float oldTranslationX = mTextureView.getTranslationX();
-                    float oldTranslationY = mTextureView.getTranslationY();
-
-                    float targetTranslationX = oldTranslationX - distanceX;
-                    float targetTranslationY = oldTranslationY - distanceY;
-
-                    // TODO 计算移动边界 ?
-                    mTextureView.setTranslationX(targetTranslationX);
-                    mTextureView.setTranslationY(targetTranslationY);
+                    canvasBuffer.translate(distanceX, distanceY);
                     return true;
                 }
 
@@ -387,7 +387,9 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
-                enqueueAction(new PointAction(e.getX(), e.getY(), Color.RED, 50));
+                MotionEvent event = MotionEvent.obtain(e);
+                event.transform(mCanvasBuffer.mMatrix);
+                enqueueAction(new PointAction(event.getX(), event.getY(), Color.RED, 50));
                 return true;
             }
 
@@ -442,6 +444,7 @@ public class DoodleView extends FrameLayout {
                         mTextureView.unlockCanvasAndPost(canvas);
                     }
                 }
+                // mTextureView.setTransform(canvasBuffer.mMatrix);
             }
 
         }
@@ -494,11 +497,30 @@ public class DoodleView extends FrameLayout {
             private final int mBitmapHeight; // 当前画布图像高度
             private final Canvas mBitmapCanvas; // 原始画布
 
+            private final Matrix mMatrix;
+
             public CanvasBuffer(int canvasWidth, int canvasHeight) {
                 mBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888);
                 mBitmapWidth = mBitmap.getWidth();
                 mBitmapHeight = mBitmap.getHeight();
                 mBitmapCanvas = new Canvas(mBitmap);
+
+                mMatrix = new Matrix();
+            }
+
+            public void translate(float dx, float dy) {
+                float[] values = new float[9];
+                mMatrix.getValues(values);
+                float oldX = values[Matrix.MTRANS_X];
+                float oldY = values[Matrix.MTRANS_Y];
+
+                float targetX = oldX - dx;
+                float targetY = oldY - dy;
+
+                CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + dx + ", " + dy + "]) -> [" + targetX + ", " + targetY + "]");
+                // mMatrix.setTranslate(targetX, targetY);
+                mMatrix.postTranslate(-dx, -dy);
+                mTextureView.setTransform(mMatrix);
             }
 
             public void draw(Canvas canvas, Paint paint) {
@@ -651,9 +673,9 @@ public class DoodleView extends FrameLayout {
         }
 
         /**
-         * texture 上的触摸事件
+         * root 上的触摸事件
          */
-        public boolean onTextureTouchEvent(MotionEvent event) {
+        public boolean onTouchEvent(MotionEvent event) {
             if (!isAvailable()) {
                 return false;
             }

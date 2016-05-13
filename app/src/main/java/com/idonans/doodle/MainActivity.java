@@ -1,4 +1,4 @@
-package com.idonans.doolde;
+package com.idonans.doodle;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;

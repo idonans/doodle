@@ -9,9 +9,9 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.idonans.doolde.MainActivity">
+    tools:context="com.idonans.doodle.MainActivity">
 
-    <com.idonans.doolde.DoodleView
+    <com.idonans.doodle.DoodleView
         android:id="@+id/doodle_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>

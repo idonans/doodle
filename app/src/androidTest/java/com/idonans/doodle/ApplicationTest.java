@@ -1,4 +1,4 @@
-package com.idonans.doolde;
+package com.idonans.doodle;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;
