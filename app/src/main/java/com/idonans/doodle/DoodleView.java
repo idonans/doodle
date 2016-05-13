@@ -387,8 +387,16 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
+                if (!isAvailable()) {
+                    return false;
+                }
+
                 MotionEvent event = MotionEvent.obtain(e);
-                event.transform(mCanvasBuffer.mMatrix);
+                event.transform(canvasBuffer.getMatrixInverse());
+
+                CommonLog.d(TAG + " onSingleTapUp [" + e.getX() + ", " + e.getY() + "] -> [" + event.getX() + ", " + event.getY() + "]");
+
                 enqueueAction(new PointAction(event.getX(), event.getY(), Color.RED, 50));
                 return true;
             }
@@ -497,7 +505,8 @@ public class DoodleView extends FrameLayout {
             private final int mBitmapHeight; // 当前画布图像高度
             private final Canvas mBitmapCanvas; // 原始画布
 
-            private final Matrix mMatrix;
+            private final Matrix mMatrixTmp;
+            private final Matrix mMatrixInvertTmp;
 
             public CanvasBuffer(int canvasWidth, int canvasHeight) {
                 mBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888);
@@ -505,12 +514,26 @@ public class DoodleView extends FrameLayout {
                 mBitmapHeight = mBitmap.getHeight();
                 mBitmapCanvas = new Canvas(mBitmap);
 
-                mMatrix = new Matrix();
+                mMatrixTmp = new Matrix();
+                mMatrixInvertTmp = new Matrix();
+            }
+
+            public Matrix getMatrix() {
+                mMatrixTmp.reset();
+                mTextureView.getTransform(mMatrixTmp);
+                return mMatrixTmp;
+            }
+
+            public Matrix getMatrixInverse() {
+                mMatrixInvertTmp.reset();
+                getMatrix().invert(mMatrixInvertTmp);
+                return mMatrixInvertTmp;
             }
 
             public void translate(float dx, float dy) {
+                Matrix matrix = getMatrix();
                 float[] values = new float[9];
-                mMatrix.getValues(values);
+                matrix.getValues(values);
                 float oldX = values[Matrix.MTRANS_X];
                 float oldY = values[Matrix.MTRANS_Y];
 
@@ -518,8 +541,8 @@ public class DoodleView extends FrameLayout {
                 float targetY = oldY - dy;
 
                 CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + dx + ", " + dy + "]) -> [" + targetX + ", " + targetY + "]");
-                mMatrix.postTranslate(-dx, -dy);
-                mTextureView.setTransform(mMatrix);
+                matrix.postTranslate(-dx, -dy);
+                mTextureView.setTransform(matrix);
                 mTextureView.invalidate();
             }
 
