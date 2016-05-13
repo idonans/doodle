@@ -1,11 +1,11 @@
 package com.idonans.doodle;
 
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 
+import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.util.ViewUtil;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends CommonActivity {
 
     private DoodleView mDoodleView;
 
