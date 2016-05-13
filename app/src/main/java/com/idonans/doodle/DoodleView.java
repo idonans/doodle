@@ -540,8 +540,19 @@ public class DoodleView extends FrameLayout {
             }
 
             public void setMatrix(Matrix matrix) {
+                debugMatrix(matrix);
+
                 mTextureView.setTransform(matrix);
                 mTextureView.postInvalidate();
+            }
+
+            private void debugMatrix(Matrix matrix) {
+                float[] values = new float[9];
+                matrix.getValues(values);
+                StringBuilder buffer = new StringBuilder();
+                buffer.append("translate x, y -> ").append(values[Matrix.MTRANS_X]).append(", ").append(values[Matrix.MTRANS_Y]).append("\n");
+                buffer.append("scale x, y -> ").append(values[Matrix.MSCALE_X]).append(", ").append(values[Matrix.MSCALE_Y]).append("\n");
+                CommonLog.d(TAG + " " + buffer);
             }
 
             public int getBufferWidth() {
