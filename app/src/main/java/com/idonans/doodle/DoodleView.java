@@ -276,9 +276,6 @@ public class DoodleView extends FrameLayout {
 
             private static final String TAG = "Render$CanvasScaleGestureListener";
 
-            private static final float MAX_SCALE = 2.75f;
-            private static final float MIN_SCALE = 0.75f;
-
             private float mPx = -1;
             private float mPy = -1;
 
@@ -302,23 +299,23 @@ public class DoodleView extends FrameLayout {
                 float scaleFactor = detector.getScaleFactor();
                 float targetScale = oldScale * scaleFactor;
 
-                if (targetScale >= oldScale && oldScale >= MAX_SCALE) {
+                if (targetScale >= oldScale && oldScale >= CanvasBuffer.MAX_SCALE) {
                     // 已经最大，不需要再放大
                     // 需要返回 true, 后续可能有缩小手势
                     return true;
                 }
 
-                if (targetScale <= oldScale && oldScale <= MIN_SCALE) {
+                if (targetScale <= oldScale && oldScale <= CanvasBuffer.MIN_SCALE) {
                     // 已经最小，不需要再缩小
                     // 需要返回 true, 后续可能有放大手势
                     return true;
                 }
 
-                if (targetScale > MAX_SCALE) {
-                    scaleFactor = MAX_SCALE / oldScale;
+                if (targetScale > CanvasBuffer.MAX_SCALE) {
+                    scaleFactor = CanvasBuffer.MAX_SCALE / oldScale;
                 }
-                if (targetScale < MIN_SCALE) {
-                    scaleFactor = MIN_SCALE / oldScale;
+                if (targetScale < CanvasBuffer.MIN_SCALE) {
+                    scaleFactor = CanvasBuffer.MIN_SCALE / oldScale;
                 }
 
                 matrix.postScale(scaleFactor, scaleFactor, mPx, mPy);
@@ -399,9 +396,26 @@ public class DoodleView extends FrameLayout {
                     float targetX = oldX - distanceX;
                     float targetY = oldY - distanceY;
 
-                    // TODO 限制移动边界?
-
                     CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + distanceX + ", " + distanceY + "]) -> [" + targetX + ", " + targetY + "]");
+
+                    // 限制移动边界
+                    float pointXMax = (canvasBuffer.getBufferWidth() - canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE) / 2;
+                    float pointYMax = (canvasBuffer.getBufferHeight() - canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE) / 2;
+                    if (targetX > pointXMax) {
+                        distanceX = oldX - pointXMax;
+                    }
+                    if (targetY > pointYMax) {
+                        distanceY = oldY - pointYMax;
+                    }
+                    float scale = values[Matrix.MSCALE_X];
+                    float pointXMin = -canvasBuffer.getBufferWidth() * scale + canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE + pointXMax;
+                    float pointYMin = -canvasBuffer.getBufferHeight() * scale + canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE + pointYMax;
+                    if (targetX < pointXMin) {
+                        distanceX = oldX - pointXMin;
+                    }
+                    if (targetY < pointYMin) {
+                        distanceY = oldY - pointYMin;
+                    }
 
                     matrix.postTranslate(-distanceX, -distanceY);
                     canvasBuffer.setMatrix(matrix);
@@ -531,6 +545,9 @@ public class DoodleView extends FrameLayout {
             // 关键帧缓存图像
             private final ArrayList<Frame> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
             private final ArrayList<Action> mActions = new ArrayList<>();
+
+            private static final float MAX_SCALE = 2.75f;
+            private static final float MIN_SCALE = 0.75f;
 
             private final Bitmap mBitmap; // 当前画布图像(绘画缓冲区)
             private final int mBitmapWidth; // 当前画布图像宽度
