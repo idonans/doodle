@@ -75,6 +75,11 @@ public class DoodleView extends FrameLayout {
         mTextureView.setSurfaceTextureListener(new TextureListener());
 
         setAspectRatio(3, 4);
+        setCanvasBackgroundColor(Color.DKGRAY);
+    }
+
+    public void setCanvasBackgroundColor(int color) {
+        mRootView.setBackgroundColor(color);
     }
 
     /**
