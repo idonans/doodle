@@ -256,6 +256,15 @@ public class DoodleView extends FrameLayout {
 
         public void setTextureEnable(boolean textureEnable) {
             mTextureEnable = textureEnable;
+            resumeDoodle();
+        }
+
+        private void resumeDoodle() {
+            CanvasBuffer canvasBuffer = mCanvasBuffer;
+            if (isAvailable()) {
+                canvasBuffer.postInvalidate();
+                postInvalidate();
+            }
         }
 
         @Override
@@ -555,6 +564,11 @@ public class DoodleView extends FrameLayout {
                 buffer.append("translate x, y -> ").append(values[Matrix.MTRANS_X]).append(", ").append(values[Matrix.MTRANS_Y]).append("\n");
                 buffer.append("scale x, y -> ").append(values[Matrix.MSCALE_X]).append(", ").append(values[Matrix.MSCALE_Y]).append("\n");
                 CommonLog.d(TAG + " " + buffer);
+            }
+
+            public void postInvalidate() {
+                Matrix matrix = getMatrix();
+                setMatrix(matrix);
             }
 
             public int getBufferWidth() {
