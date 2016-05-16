@@ -14,6 +14,7 @@ import android.os.Build;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.v4.view.GestureDetectorCompat;
+import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.Gravity;
@@ -237,20 +238,47 @@ public class DoodleView extends FrameLayout {
 
         private final TaskQueue mTaskQueue = new TaskQueue(1);
 
-        private final ScaleGestureDetector mCanvasScaleGestureDetector;
+        private final TwoPointScaleGestureDetector mCanvasScaleGestureDetector;
         private final GestureDetectorCompat mCanvasTranslationGestureDetectorCompat;
         private final GestureDetectorCompat mTextureActionGestureDetectorCompat;
 
         private final Paint mPaint;
 
         private Render(Context context) {
-            mCanvasScaleGestureDetector = new ScaleGestureDetector(context, new CanvasScaleGestureListener());
+            mCanvasScaleGestureDetector = new TwoPointScaleGestureDetector(context, new CanvasScaleGestureListener());
             mCanvasTranslationGestureDetectorCompat = new GestureDetectorCompat(context, new CanvasTranslationGestureListener());
             mCanvasTranslationGestureDetectorCompat.setIsLongpressEnabled(false);
             mTextureActionGestureDetectorCompat = new GestureDetectorCompat(context, new TextureActionGestureListener());
             mTextureActionGestureDetectorCompat.setIsLongpressEnabled(false);
 
             mPaint = new Paint();
+        }
+
+        private class TwoPointScaleGestureDetector extends ScaleGestureDetector {
+
+            private boolean mDownStart;
+
+            public TwoPointScaleGestureDetector(Context context, OnScaleGestureListener listener) {
+                super(context, listener);
+            }
+
+            @Override
+            public boolean onTouchEvent(MotionEvent event) {
+                final int action = MotionEventCompat.getActionMasked(event);
+                switch (action) {
+                    case MotionEvent.ACTION_DOWN:
+                        mDownStart = false;
+                        break;
+                    case MotionEvent.ACTION_POINTER_DOWN:
+                        mDownStart = true;
+                        break;
+                    default:
+                        break;
+                }
+
+                return super.onTouchEvent(event);
+            }
+
         }
 
         private void setAspectRatio(int aspectWidth, int aspectHeight) {
@@ -350,6 +378,10 @@ public class DoodleView extends FrameLayout {
             public boolean onScaleBegin(ScaleGestureDetector detector) {
                 CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
+                    return false;
+                }
+
+                if (!mCanvasScaleGestureDetector.mDownStart) {
                     return false;
                 }
 
