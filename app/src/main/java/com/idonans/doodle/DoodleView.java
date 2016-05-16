@@ -808,7 +808,7 @@ public class DoodleView extends FrameLayout {
             }
 
             /**
-             * 将手势结合当前画笔，处理为绘画绘画步骤
+             * 将手势结合当前画笔，处理为绘画步骤
              */
             public void dispatchGestureAction(GestureAction gestureAction) {
                 int drawStepSize = mDrawSteps.size();
