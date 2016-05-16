@@ -30,7 +30,7 @@ public class MainActivity extends CommonActivity {
         setContentView(R.layout.activity_main);
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(Color.BLACK, 50));
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(Color.BLACK, 50, 255));
 
         mDoodleActionPanel = ViewUtil.findViewByID(this, R.id.doodle_action_panel);
         mUndo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.undo);
@@ -101,31 +101,17 @@ public class MainActivity extends CommonActivity {
 
     private void setBrushColor(int color) {
         DoodleView.Brush brush = mDoodleView.getBrush();
-
-        int c = Color.argb(
-                Color.alpha(brush.color),
-                Color.red(color),
-                Color.green(color),
-                Color.blue(color));
-
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(c, brush.size));
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(color, brush.size, brush.alpha));
     }
 
     private void setBrushAlpha(int alpha) {
         DoodleView.Brush brush = mDoodleView.getBrush();
-
-        int c = Color.argb(
-                alpha,
-                Color.red(brush.color),
-                Color.green(brush.color),
-                Color.blue(brush.color));
-
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(c, brush.size));
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(brush.color, brush.size, alpha));
     }
 
     private void setBrushSize(int size) {
         DoodleView.Brush brush = mDoodleView.getBrush();
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(brush.color, size));
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(brush.color, size, brush.alpha));
     }
 
     public static class SetBrushFragment extends CommonFragment {

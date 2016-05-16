@@ -708,6 +708,7 @@ public class DoodleView extends FrameLayout {
 
                     // 将缓冲区中的内容绘画到 canvas 上
                     long timeStart = System.currentTimeMillis();
+                    resetPaint(mPaint);
                     canvasBuffer.draw(canvas, mPaint);
                     long lastDrawingTime = System.currentTimeMillis() - timeStart;
                     canvasBuffer.setLastDrawingTime(lastDrawingTime);
@@ -843,6 +844,7 @@ public class DoodleView extends FrameLayout {
 
             public CanvasBuffer(int canvasWidth, int canvasHeight) {
                 mBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888);
+                mBitmap.setHasAlpha(true);
                 mBitmapWidth = mBitmap.getWidth();
                 mBitmapHeight = mBitmap.getHeight();
                 mBitmapCanvas = new Canvas(mBitmap);
@@ -1062,8 +1064,10 @@ public class DoodleView extends FrameLayout {
                     if (reuseLastFrame) {
                         lastFrameBitmap = f1.mBitmap;
                     } else {
-                        lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.RGB_565);
+                        lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
+                        lastFrameBitmap.setHasAlpha(true);
                     }
+                    resetPaint(paint);
                     new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, paint);
                     FrameDrawStep lastestFrame = new FrameDrawStep(getBrush(), drawStepSize - 2, lastFrameBitmap);
 
@@ -1207,18 +1211,20 @@ public class DoodleView extends FrameLayout {
          */
         public final static int TYPE_PENCIL = 1;
 
-        public final int color; // 画刷的颜色
+        public final int color; // 画刷的颜色 ARGB
         public final int size; // 画刷的大小
+        public final int alpha; // 画刷的透明度 [0, 255]
         public final int type; // 画刷的类型
 
-        public Brush(int color, int size, int type) {
+        public Brush(int color, int size, int alpha, int type) {
             this.color = color;
             this.size = size;
+            this.alpha = alpha;
             this.type = type;
         }
 
-        public static Brush createPencil(int color, int size) {
-            return new Brush(color, size, TYPE_PENCIL);
+        public static Brush createPencil(int color, int size, int alpha) {
+            return new Brush(color, size, alpha, TYPE_PENCIL);
         }
 
         public static void mustPencil(Brush brush) {
@@ -1233,6 +1239,7 @@ public class DoodleView extends FrameLayout {
         public void fillPaint(Paint paint) {
             paint.reset();
             paint.setColor(color);
+            paint.setAlpha(alpha);
             paint.setStrokeWidth(size);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeJoin(Paint.Join.ROUND);
@@ -1359,6 +1366,7 @@ public class DoodleView extends FrameLayout {
         @Override
         public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
             super.onDraw(canvas, paint);
+            resetPaint(paint);
             canvas.drawBitmap(mBitmap, 0f, 0f, paint);
         }
     }
@@ -1447,6 +1455,12 @@ public class DoodleView extends FrameLayout {
             canvas.drawPath(mPath, paint);
         }
 
+    }
+
+    private static void resetPaint(Paint paint) {
+        paint.reset();
+        paint.setColor(Color.WHITE);
+        paint.setAlpha(255);
     }
 
 }
