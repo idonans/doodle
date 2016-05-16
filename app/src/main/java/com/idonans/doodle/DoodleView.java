@@ -1061,7 +1061,7 @@ public class DoodleView extends FrameLayout {
                         lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
                     }
                     new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, null);
-                    FrameDrawStep latestFrame = new FrameDrawStep(null, drawStepSize - 2, lastFrameBitmap);
+                    FrameDrawStep latestFrame = new FrameDrawStep(drawStepSize - 2, lastFrameBitmap);
 
                     if (reuseLastFrame) {
                         mFrames.set(framesSize - 1, latestFrame);
@@ -1357,8 +1357,8 @@ public class DoodleView extends FrameLayout {
         private final int mDrawStepIndex; // 该帧对应的 draw step index, 绘画步骤从 0 开始
         private final Bitmap mBitmap; // 从0到该 draw step index (包含) 所有绘画步骤完成之后的图像
 
-        public FrameDrawStep(Brush drawBrush, int drawStepIndex, Bitmap bitmap) {
-            super(drawBrush);
+        public FrameDrawStep(int drawStepIndex, Bitmap bitmap) {
+            super(null);
             mDrawStepIndex = drawStepIndex;
             mBitmap = bitmap;
         }
