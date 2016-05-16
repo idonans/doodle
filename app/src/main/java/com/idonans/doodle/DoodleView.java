@@ -26,6 +26,7 @@ import android.widget.FrameLayout;
 import com.idonans.acommon.lang.Available;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
+import com.idonans.acommon.lang.Threads;
 
 import java.util.ArrayList;
 
@@ -514,6 +515,9 @@ public class DoodleView extends FrameLayout {
 
                 currentEvent.transform(matrixInverse);
                 enqueueGestureAction(new ScrollGestureAction(downEvent, currentEvent));
+
+                Threads.sleepQuietly(canvasBuffer.getLastDrawingTime());
+
                 return true;
             }
 
@@ -551,7 +555,10 @@ public class DoodleView extends FrameLayout {
                     canvas.drawColor(Color.WHITE);
 
                     // 将缓冲区中的内容绘画到 canvas 上
+                    long timeStart = System.currentTimeMillis();
                     canvasBuffer.draw(canvas, mPaint);
+                    long lastDrawingTime = System.currentTimeMillis() - timeStart;
+                    canvasBuffer.setLastDrawingTime(lastDrawingTime);
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
@@ -604,6 +611,8 @@ public class DoodleView extends FrameLayout {
             private final Matrix mMatrixTmp;
             private final Matrix mMatrixInvertTmp;
 
+            private long mLastDrawingTime;
+
             public CanvasBuffer(int canvasWidth, int canvasHeight) {
                 mBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888);
                 mBitmapWidth = mBitmap.getWidth();
@@ -641,6 +650,14 @@ public class DoodleView extends FrameLayout {
 
             public int getBufferHeight() {
                 return mBitmapHeight;
+            }
+
+            public void setLastDrawingTime(long lastDrawingTime) {
+                mLastDrawingTime = lastDrawingTime;
+            }
+
+            public long getLastDrawingTime() {
+                return mLastDrawingTime;
             }
 
             public Matrix getMatrix() {
