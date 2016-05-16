@@ -390,44 +390,44 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                if (e2.getPointerCount() > 1) {
-                    // 多指移动画布
-                    Matrix matrix = canvasBuffer.getMatrix();
-                    float[] values = new float[9];
-                    matrix.getValues(values);
-                    float oldX = values[Matrix.MTRANS_X];
-                    float oldY = values[Matrix.MTRANS_Y];
-
-                    float targetX = oldX - distanceX;
-                    float targetY = oldY - distanceY;
-
-                    CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + distanceX + ", " + distanceY + "]) -> [" + targetX + ", " + targetY + "]");
-
-                    // 限制移动边界
-                    float pointXMax = (canvasBuffer.getBufferWidth() - canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE) / 2;
-                    float pointYMax = (canvasBuffer.getBufferHeight() - canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE) / 2;
-                    if (targetX > pointXMax) {
-                        distanceX = oldX - pointXMax;
-                    }
-                    if (targetY > pointYMax) {
-                        distanceY = oldY - pointYMax;
-                    }
-                    float scale = values[Matrix.MSCALE_X];
-                    float pointXMin = -canvasBuffer.getBufferWidth() * scale + canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE + pointXMax;
-                    float pointYMin = -canvasBuffer.getBufferHeight() * scale + canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE + pointYMax;
-                    if (targetX < pointXMin) {
-                        distanceX = oldX - pointXMin;
-                    }
-                    if (targetY < pointYMin) {
-                        distanceY = oldY - pointYMin;
-                    }
-
-                    matrix.postTranslate(-distanceX, -distanceY);
-                    canvasBuffer.setMatrix(matrix);
-                    return true;
+                if (e2.getPointerCount() <= 1) {
+                    return false;
                 }
 
-                return false;
+                // 多指移动画布
+                Matrix matrix = canvasBuffer.getMatrix();
+                float[] values = new float[9];
+                matrix.getValues(values);
+                float oldX = values[Matrix.MTRANS_X];
+                float oldY = values[Matrix.MTRANS_Y];
+
+                float targetX = oldX - distanceX;
+                float targetY = oldY - distanceY;
+
+                CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + distanceX + ", " + distanceY + "]) -> [" + targetX + ", " + targetY + "]");
+
+                // 限制移动边界
+                float pointXMax = (canvasBuffer.getBufferWidth() - canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE) / 2;
+                float pointYMax = (canvasBuffer.getBufferHeight() - canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE) / 2;
+                if (targetX > pointXMax) {
+                    distanceX = oldX - pointXMax;
+                }
+                if (targetY > pointYMax) {
+                    distanceY = oldY - pointYMax;
+                }
+                float scale = values[Matrix.MSCALE_X];
+                float pointXMin = -canvasBuffer.getBufferWidth() * scale + canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE + pointXMax;
+                float pointYMin = -canvasBuffer.getBufferHeight() * scale + canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE + pointYMax;
+                if (targetX < pointXMin) {
+                    distanceX = oldX - pointXMin;
+                }
+                if (targetY < pointYMin) {
+                    distanceY = oldY - pointYMin;
+                }
+
+                matrix.postTranslate(-distanceX, -distanceY);
+                canvasBuffer.setMatrix(matrix);
+                return true;
             }
 
             @Override
