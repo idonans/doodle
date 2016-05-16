@@ -806,6 +806,7 @@ public class DoodleView extends FrameLayout {
             private static final int FRAMES_STEP_INTERVAL_MAX = 8;
             // 关键帧缓存图像
             private final ArrayList<FrameDrawStep> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
+            // 绘画步骤末尾可能至多存在一个 EmptyDrawStep, 用来标记上一个绘画步骤结束
             private final ArrayList<DrawStep> mDrawSteps = new ArrayList<>();
             private final ArrayList<DrawStep> mDrawStepsRedo = new ArrayList<>();
 
@@ -833,9 +834,23 @@ public class DoodleView extends FrameLayout {
             }
 
             /**
+             * 判断在绘画步骤末尾是否存在一个 EmptyDrawStep
+             */
+            private boolean hasEmptyDrawStepOnEnd() {
+                int size = mDrawSteps.size();
+                if (size <= 0) {
+                    return false;
+                }
+                return mDrawSteps.get(size - 1) instanceof EmptyDrawStep;
+            }
+
+            /**
              * 小心线程. 是否可以回退
              */
             public boolean canUndo() {
+                if (hasEmptyDrawStepOnEnd()) {
+                    return mDrawSteps.size() > 1;
+                }
                 return mDrawSteps.size() > 0;
             }
 
@@ -843,12 +858,19 @@ public class DoodleView extends FrameLayout {
              * 小心线程. 回退操作，回退成功，返回 true, 否则返回 false.
              */
             public boolean undo() {
-                int size = mDrawSteps.size();
-                if (size <= 0) {
+                boolean canUndo = canUndo();
+                if (!canUndo) {
                     return false;
                 }
 
-                DrawStep lastDrawStep = mDrawSteps.remove(size - 1);
+                DrawStep lastDrawStep;
+                int size = mDrawSteps.size();
+                if (hasEmptyDrawStepOnEnd()) {
+                    lastDrawStep = mDrawSteps.remove(size - 2);
+                } else {
+                    lastDrawStep = mDrawSteps.remove(size - 1);
+                }
+
                 mDrawStepsRedo.add(lastDrawStep);
 
                 // 如果最后一个关键帧在绘画步骤之外，则删除之(如果最后一个关键帧此时对应的刚好是最后一个绘画步骤，也需要删除之)
@@ -880,7 +902,12 @@ public class DoodleView extends FrameLayout {
                 }
 
                 DrawStep lastDrawStep = mDrawStepsRedo.remove(size - 1);
-                mDrawSteps.add(lastDrawStep);
+
+                if (hasEmptyDrawStepOnEnd()) {
+                    mDrawSteps.add(mDrawSteps.size() - 1, lastDrawStep);
+                } else {
+                    mDrawSteps.add(lastDrawStep);
+                }
                 return true;
             }
 
