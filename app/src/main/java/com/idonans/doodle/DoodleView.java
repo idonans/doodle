@@ -886,7 +886,11 @@ public class DoodleView extends FrameLayout {
         public void fillPaint(Paint paint) {
             paint.reset();
             paint.setColor(color);
-            paint.setDither(true);
+            paint.setStrokeWidth(size);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setStrokeCap(Paint.Cap.ROUND); // 笔刷样式 圆形
+            paint.setDither(true); // 图像抖动处理 使图像更清晰
             paint.setAntiAlias(true); // 抗锯齿
         }
     }
@@ -1032,6 +1036,7 @@ public class DoodleView extends FrameLayout {
         public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
             super.onDraw(canvas, paint);
             mDrawBrush.fillPaint(paint);
+            paint.setStyle(Paint.Style.FILL);
 
             canvas.drawCircle(mX, mY, mDrawBrush.size, paint);
         }
@@ -1092,10 +1097,6 @@ public class DoodleView extends FrameLayout {
         public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
             super.onDraw(canvas, paint);
             mDrawBrush.fillPaint(paint);
-            paint.setStrokeWidth(mDrawBrush.size);
-            paint.setStyle(Paint.Style.STROKE);
-            // paint.setStrokeJoin(Paint.Join.ROUND);
-            // paint.setStrokeCap(Paint.Cap.ROUND);
 
             canvas.drawPath(mPath, paint);
         }
