@@ -24,6 +24,11 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:text="redo"/>
+        <Button
+            android:id="@+id/set_brush"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="设置画笔"/>
     </LinearLayout>
 
     <com.idonans.doodle.DoodleView

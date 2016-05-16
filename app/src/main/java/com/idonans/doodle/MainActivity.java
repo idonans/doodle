@@ -2,12 +2,18 @@ package com.idonans.doodle;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.idonans.acommon.app.CommonActivity;
+import com.idonans.acommon.app.CommonFragment;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
+
+import java.util.ArrayList;
 
 public class MainActivity extends CommonActivity {
 
@@ -16,6 +22,7 @@ public class MainActivity extends CommonActivity {
     private ViewGroup mDoodleActionPanel;
     private View mUndo;
     private View mRedo;
+    private View mSetBrush;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +60,14 @@ public class MainActivity extends CommonActivity {
                 mRedo.setEnabled(canRedo);
             }
         });
+
+        mSetBrush = ViewUtil.findViewByID(mDoodleActionPanel, R.id.set_brush);
+        mSetBrush.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSetBrushDialog();
+            }
+        });
     }
 
     private void disableDoodleAction() {
@@ -74,6 +89,108 @@ public class MainActivity extends CommonActivity {
                 mRedo.setEnabled(success);
             }
         });
+    }
+
+    private void showSetBrushDialog() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .add(android.R.id.content, new SetBrushFragment())
+                .addToBackStack(null)
+                .commit();
+    }
+
+    private void setBrushColor(int color) {
+        DoodleView.Brush brush = mDoodleView.getBrush();
+
+        int c = Color.argb(
+                Color.alpha(brush.color),
+                Color.red(color),
+                Color.green(color),
+                Color.blue(color));
+
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(c, brush.size));
+    }
+
+    private void setBrushAlpha(int alpha) {
+        DoodleView.Brush brush = mDoodleView.getBrush();
+
+        int c = Color.argb(
+                alpha,
+                Color.red(brush.color),
+                Color.green(brush.color),
+                Color.blue(brush.color));
+
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(c, brush.size));
+    }
+
+    private void setBrushSize(int size) {
+        DoodleView.Brush brush = mDoodleView.getBrush();
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(brush.color, size));
+    }
+
+    public static class SetBrushFragment extends CommonFragment {
+
+        @Nullable
+        @Override
+        public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+            return inflater.inflate(R.layout.activity_main_set_brush_fragment, container, false);
+        }
+
+        @Override
+        public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+            super.onViewCreated(view, savedInstanceState);
+            {
+                ArrayList<TextView> views = new ArrayList<>();
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.color_red));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.color_black));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.color_white));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.color_yellow));
+                for (TextView v : views) {
+                    v.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            ((MainActivity) getActivity()).setBrushColor(Color.parseColor(((TextView) v).getText().toString()));
+                        }
+                    });
+                }
+            }
+
+            {
+                ArrayList<TextView> views = new ArrayList<>();
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.size_10));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.size_20));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.size_40));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.size_80));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.size_160));
+                for (TextView v : views) {
+                    v.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            ((MainActivity) getActivity()).setBrushSize(Integer.valueOf(((TextView) v).getText().toString()));
+                        }
+                    });
+                }
+            }
+
+            {
+                ArrayList<TextView> views = new ArrayList<>();
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.alpha_10));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.alpha_50));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.alpha_100));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.alpha_150));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.alpha_200));
+                views.add((TextView) ViewUtil.findViewByID(view, R.id.alpha_255));
+                for (TextView v : views) {
+                    v.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            ((MainActivity) getActivity()).setBrushAlpha(Integer.valueOf(((TextView) v).getText().toString()));
+                        }
+                    });
+                }
+            }
+        }
+
     }
 
 }
