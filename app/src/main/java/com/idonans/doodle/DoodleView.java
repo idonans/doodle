@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
@@ -867,6 +868,7 @@ public class DoodleView extends FrameLayout {
         public void fillPaint(Paint paint) {
             paint.reset();
             paint.setColor(color);
+            paint.setDither(true);
             paint.setAntiAlias(true); // 抗锯齿
         }
     }
@@ -906,6 +908,7 @@ public class DoodleView extends FrameLayout {
          */
         public boolean dispatchGestureAction(GestureAction gestureAction, Brush brush) {
             if (mDrawBrush != brush) {
+                // 画笔变更，开始新的绘画步骤
                 return false;
             }
             if (gestureAction == null || brush == null) {
@@ -935,7 +938,18 @@ public class DoodleView extends FrameLayout {
                 }
             }
 
-            // TODO
+            if (gestureAction instanceof ScrollGestureAction) {
+                ScrollGestureAction scrollGestureAction = (ScrollGestureAction) gestureAction;
+                if (brush.type == Brush.TYPE_PENCIL) {
+                    return new ScribbleDrawStep(brush,
+                            scrollGestureAction.downEvent.getX(),
+                            scrollGestureAction.downEvent.getY(),
+                            scrollGestureAction.currentEvent.getX(),
+                            scrollGestureAction.currentEvent.getY());
+                }
+            }
+
+            // 其他绘画待扩展
 
             return new EmptyDrawStep(brush);
         }
@@ -1000,8 +1014,51 @@ public class DoodleView extends FrameLayout {
         public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
             super.onDraw(canvas, paint);
             mDrawBrush.fillPaint(paint);
+
             canvas.drawCircle(mX, mY, mDrawBrush.size, paint);
         }
+    }
+
+    /**
+     * 自由绘制
+     */
+    public static class ScribbleDrawStep extends DrawStep {
+
+        private final Path mPath;
+
+        public ScribbleDrawStep(Brush drawBrush, float startX, float startY, float moveX, float moveY) {
+            super(drawBrush);
+            Brush.mustPencil(drawBrush);
+
+            mPath = new Path();
+            mPath.moveTo(startX, startY);
+            mPath.lineTo(moveX, moveY);
+        }
+
+        @Override
+        protected boolean onGestureAction(@NonNull GestureAction gestureAction) {
+            if (!(gestureAction instanceof ScrollGestureAction)) {
+                return false;
+            }
+
+            ScrollGestureAction scrollGestureAction = (ScrollGestureAction) gestureAction;
+            mPath.lineTo(scrollGestureAction.currentEvent.getX(),
+                    scrollGestureAction.currentEvent.getY());
+            return true;
+        }
+
+        @Override
+        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+            super.onDraw(canvas, paint);
+            mDrawBrush.fillPaint(paint);
+            paint.setStrokeWidth(mDrawBrush.size);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+
+            canvas.drawPath(mPath, paint);
+        }
+
     }
 
 }
