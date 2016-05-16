@@ -13,6 +13,7 @@ import android.graphics.SurfaceTexture;
 import android.os.Build;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
@@ -223,6 +224,35 @@ public class DoodleView extends FrameLayout {
         }
     }
 
+    private DoodleBufferChangedListener mDoodleBufferChangedListener;
+
+    public interface DoodleBufferChangedListener {
+        void onDoodleBufferChanged(boolean canUndo, boolean canRedo);
+    }
+
+    /**
+     * 监听涂鸦板中回退和恢复的状态变化. if null, clear last listener. 在 ui 线程中回调.
+     */
+    public void setDoodleBufferChangedListener(@Nullable final DoodleBufferChangedListener doodleBufferChangedListener) {
+        if (doodleBufferChangedListener == null) {
+            // clear last listener
+            mDoodleBufferChangedListener = null;
+            return;
+        }
+
+        mDoodleBufferChangedListener = new DoodleBufferChangedListener() {
+            @Override
+            public void onDoodleBufferChanged(final boolean canUndo, final boolean canRedo) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        doodleBufferChangedListener.onDoodleBufferChanged(canUndo, canRedo);
+                    }
+                });
+            }
+        };
+    }
+
     /**
      * 指定操作的结果回调， 如回退和恢复操作
      */
@@ -230,15 +260,8 @@ public class DoodleView extends FrameLayout {
         void onActionResult(boolean success);
     }
 
-    public static class SimpleActionCallback implements ActionCallback {
-        @Override
-        public void onActionResult(boolean success) {
-            // ignore
-        }
-    }
-
     /**
-     * 是否可以回退
+     * 是否可以回退. 在 ui 线程中回调.
      */
     public void canUndo(final ActionCallback callback) {
         mRender.canUndo(new ActionCallback() {
@@ -255,27 +278,23 @@ public class DoodleView extends FrameLayout {
     }
 
     /**
-     * 回退操作，回退成功，返回 true, 否则返回 false.
+     * 回退
+     *
+     * @see #setDoodleBufferChangedListener(DoodleBufferChangedListener)
      */
-    public void undo(final ActionCallback callback) {
+    public void undo() {
         mRender.undo(new ActionCallback() {
             @Override
             public void onActionResult(final boolean success) {
                 if (success) {
                     mRender.postInvalidate();
                 }
-                Threads.runOnUi(new Runnable() {
-                    @Override
-                    public void run() {
-                        callback.onActionResult(success);
-                    }
-                });
             }
         });
     }
 
     /**
-     * 是否可以前进, undo 之后的反向恢复
+     * 是否可以前进, undo 之后的反向恢复. 在 ui 线程中回调.
      */
     public void canRedo(final ActionCallback callback) {
         mRender.canRedo(new ActionCallback() {
@@ -292,21 +311,17 @@ public class DoodleView extends FrameLayout {
     }
 
     /**
-     * 反向恢复，恢复成功，返回 true, 否则返回 false.
+     * 反向恢复
+     *
+     * @see #setDoodleBufferChangedListener(DoodleBufferChangedListener)
      */
-    public void redo(final ActionCallback callback) {
+    public void redo() {
         mRender.redo(new ActionCallback() {
             @Override
             public void onActionResult(final boolean success) {
                 if (success) {
                     mRender.postInvalidate();
                 }
-                Threads.runOnUi(new Runnable() {
-                    @Override
-                    public void run() {
-                        callback.onActionResult(success);
-                    }
-                });
             }
         });
     }
@@ -721,6 +736,7 @@ public class DoodleView extends FrameLayout {
                         return;
                     }
                     canvasBuffer.dispatchGestureAction(gestureAction);
+                    canvasBuffer.notifyUndoRedoChanged();
                 }
             });
             postInvalidate();
@@ -844,6 +860,18 @@ public class DoodleView extends FrameLayout {
                 return mDrawSteps.get(size - 1) instanceof EmptyDrawStep;
             }
 
+            private void clearRedo() {
+                if (mDrawStepsRedo.size() > 0) {
+                    mDrawStepsRedo.clear();
+                }
+            }
+
+            private void notifyUndoRedoChanged() {
+                if (mDoodleBufferChangedListener != null) {
+                    mDoodleBufferChangedListener.onDoodleBufferChanged(canUndo(), canRedo());
+                }
+            }
+
             /**
              * 小心线程. 是否可以回退
              */
@@ -882,6 +910,7 @@ public class DoodleView extends FrameLayout {
                     }
                 }
 
+                notifyUndoRedoChanged();
                 return true;
             }
 
@@ -908,6 +937,8 @@ public class DoodleView extends FrameLayout {
                 } else {
                     mDrawSteps.add(lastDrawStep);
                 }
+
+                notifyUndoRedoChanged();
                 return true;
             }
 
@@ -1050,6 +1081,9 @@ public class DoodleView extends FrameLayout {
              * 将手势结合当前画笔，处理为绘画步骤
              */
             public void dispatchGestureAction(GestureAction gestureAction) {
+                // 开始新的动作，清空可能存在的 redo 内容
+                clearRedo();
+
                 int drawStepSize = mDrawSteps.size();
                 if (drawStepSize <= 0) {
                     // 第一个动作

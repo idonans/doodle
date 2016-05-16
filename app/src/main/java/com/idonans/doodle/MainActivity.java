@@ -6,10 +6,12 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.idonans.acommon.app.CommonActivity;
+import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
 
 public class MainActivity extends CommonActivity {
 
+    private static final String TAG = "MainActivity";
     private DoodleView mDoodleView;
     private ViewGroup mDoodleActionPanel;
     private View mUndo;
@@ -30,26 +32,25 @@ public class MainActivity extends CommonActivity {
         mUndo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                disableDoodleAction();
-                mDoodleView.undo(new DoodleView.ActionCallback() {
-                    @Override
-                    public void onActionResult(boolean success) {
-                        syncUndoRedoStatus();
-                    }
-                });
+                mDoodleView.undo();
             }
         });
 
         mRedo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                disableDoodleAction();
-                mDoodleView.redo(new DoodleView.ActionCallback() {
-                    @Override
-                    public void onActionResult(boolean success) {
-                        syncUndoRedoStatus();
-                    }
-                });
+                mDoodleView.redo();
+            }
+        });
+
+        syncUndoRedoStatus();
+
+        mDoodleView.setDoodleBufferChangedListener(new DoodleView.DoodleBufferChangedListener() {
+            @Override
+            public void onDoodleBufferChanged(boolean canUndo, boolean canRedo) {
+                CommonLog.d(TAG + " onDoodleBufferChanged canUndo:" + canUndo + ", canRedo:" + canRedo);
+                mUndo.setEnabled(canUndo);
+                mRedo.setEnabled(canRedo);
             }
         });
     }
