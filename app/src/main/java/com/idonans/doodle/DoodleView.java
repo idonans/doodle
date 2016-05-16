@@ -1044,6 +1044,8 @@ public class DoodleView extends FrameLayout {
 
         private static final String TAG = "ScribbleDrawStep";
         private final Path mPath;
+        private float mPreX;
+        private float mPreY;
 
         public ScribbleDrawStep(Brush drawBrush, float startX, float startY, float moveX, float moveY) {
             super(drawBrush);
@@ -1051,7 +1053,24 @@ public class DoodleView extends FrameLayout {
 
             mPath = new Path();
             mPath.moveTo(startX, startY);
-            mPath.lineTo(moveX, moveY);
+            mPreX = startX;
+            mPreY = startY;
+            toPoint(moveX, moveY);
+        }
+
+        /**
+         * 绘画平滑曲线
+         */
+        private void toPoint(float x, float y) {
+            final float dx = Math.abs(x - mPreX);
+            final float dy = Math.abs(y - mPreY);
+            if (dx >= 3 || dy >= 3) {
+                mPath.quadTo(mPreX, mPreY, (mPreX + x) / 2, (mPreY + y) / 2);
+            } else {
+                mPath.lineTo(x, y);
+            }
+            mPreX = x;
+            mPreY = y;
         }
 
         @Override
@@ -1065,11 +1084,11 @@ public class DoodleView extends FrameLayout {
             int historySize = scrollGestureAction.currentEvent.getHistorySize();
             CommonLog.d(TAG + " history size: " + historySize);
             for (int i = 0; i < historySize; i++) {
-                mPath.lineTo(scrollGestureAction.currentEvent.getHistoricalX(i),
+                toPoint(scrollGestureAction.currentEvent.getHistoricalX(i),
                         scrollGestureAction.currentEvent.getHistoricalY(i));
             }
 
-            mPath.lineTo(scrollGestureAction.currentEvent.getX(),
+            toPoint(scrollGestureAction.currentEvent.getX(),
                     scrollGestureAction.currentEvent.getY());
             return true;
         }
@@ -1080,8 +1099,8 @@ public class DoodleView extends FrameLayout {
             mDrawBrush.fillPaint(paint);
             paint.setStrokeWidth(mDrawBrush.size);
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeJoin(Paint.Join.ROUND);
-            paint.setStrokeCap(Paint.Cap.ROUND);
+            // paint.setStrokeJoin(Paint.Join.ROUND);
+            // paint.setStrokeCap(Paint.Cap.ROUND);
 
             canvas.drawPath(mPath, paint);
         }
