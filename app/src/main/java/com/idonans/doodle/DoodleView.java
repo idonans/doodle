@@ -230,32 +230,85 @@ public class DoodleView extends FrameLayout {
         void onActionResult(boolean success);
     }
 
+    public static class SimpleActionCallback implements ActionCallback {
+        @Override
+        public void onActionResult(boolean success) {
+            // ignore
+        }
+    }
+
     /**
      * 是否可以回退
      */
-    public void canUndo(ActionCallback callback) {
-        mRender.canUndo(callback);
+    public void canUndo(final ActionCallback callback) {
+        mRender.canUndo(new ActionCallback() {
+            @Override
+            public void onActionResult(final boolean success) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onActionResult(success);
+                    }
+                });
+            }
+        });
     }
 
     /**
      * 回退操作，回退成功，返回 true, 否则返回 false.
      */
-    public void undo(ActionCallback callback) {
-        mRender.undo(callback);
+    public void undo(final ActionCallback callback) {
+        mRender.undo(new ActionCallback() {
+            @Override
+            public void onActionResult(final boolean success) {
+                if (success) {
+                    mRender.postInvalidate();
+                }
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onActionResult(success);
+                    }
+                });
+            }
+        });
     }
 
     /**
      * 是否可以前进, undo 之后的反向恢复
      */
-    public void canRedo(ActionCallback callback) {
-        mRender.canRedo(callback);
+    public void canRedo(final ActionCallback callback) {
+        mRender.canRedo(new ActionCallback() {
+            @Override
+            public void onActionResult(final boolean success) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onActionResult(success);
+                    }
+                });
+            }
+        });
     }
 
     /**
      * 反向恢复，恢复成功，返回 true, 否则返回 false.
      */
-    public void redo(ActionCallback callback) {
-        mRender.redo(callback);
+    public void redo(final ActionCallback callback) {
+        mRender.redo(new ActionCallback() {
+            @Override
+            public void onActionResult(final boolean success) {
+                if (success) {
+                    mRender.postInvalidate();
+                }
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onActionResult(success);
+                    }
+                });
+            }
+        });
     }
 
     private class Render implements Available {
