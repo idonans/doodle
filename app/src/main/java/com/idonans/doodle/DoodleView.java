@@ -851,6 +851,10 @@ public class DoodleView extends FrameLayout {
             this.type = type;
         }
 
+        public static Brush createPencil(int color, int size) {
+            return new Brush(color, size, TYPE_PENCIL);
+        }
+
         public static void mustPencil(Brush brush) {
             if (brush == null || brush.type != TYPE_PENCIL) {
                 throw new BrushNotSupportException(brush);
