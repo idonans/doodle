@@ -735,8 +735,10 @@ public class DoodleView extends FrameLayout {
                         CommonLog.d(TAG + " available is false, ignore GestureAction " + gestureAction);
                         return;
                     }
-                    canvasBuffer.dispatchGestureAction(gestureAction);
-                    canvasBuffer.notifyUndoRedoChanged();
+                    boolean changed = canvasBuffer.dispatchGestureAction(gestureAction);
+                    if (changed) {
+                        canvasBuffer.notifyUndoRedoChanged();
+                    }
                 }
             });
             postInvalidate();
@@ -860,10 +862,15 @@ public class DoodleView extends FrameLayout {
                 return mDrawSteps.get(size - 1) instanceof EmptyDrawStep;
             }
 
-            private void clearRedo() {
+            /**
+             * redo steps changed return true
+             */
+            private boolean clearRedo() {
                 if (mDrawStepsRedo.size() > 0) {
                     mDrawStepsRedo.clear();
+                    return true;
                 }
+                return false;
             }
 
             private void notifyUndoRedoChanged() {
@@ -1078,11 +1085,13 @@ public class DoodleView extends FrameLayout {
             }
 
             /**
-             * 将手势结合当前画笔，处理为绘画步骤
+             * 将手势结合当前画笔，处理为绘画步骤. undo or redo changed return true.
              */
-            public void dispatchGestureAction(GestureAction gestureAction) {
+            public boolean dispatchGestureAction(GestureAction gestureAction) {
+                // 标记 undo or redo 是否产生了变化
+                boolean changed = false;
                 // 开始新的动作，清空可能存在的 redo 内容
-                clearRedo();
+                changed |= clearRedo();
 
                 int drawStepSize = mDrawSteps.size();
                 if (drawStepSize <= 0) {
@@ -1090,31 +1099,44 @@ public class DoodleView extends FrameLayout {
                     DrawStep drawStep = DrawStep.create(gestureAction, getBrush());
                     if (drawStep == null) {
                         CommonLog.e(TAG + " dispatchGestureAction create draw step null.");
-                        return;
+                        return changed;
                     }
                     mDrawSteps.add(drawStep);
-                    return;
+                    // 第一个绘画步骤， undo 从无到有
+                    changed |= true;
+                    return changed;
                 }
 
                 DrawStep lastDrawStep = mDrawSteps.get(drawStepSize - 1);
                 if (lastDrawStep.dispatchGestureAction(gestureAction, getBrush())) {
                     // 当前绘画手势被最后一个绘画步骤继续处理
-                    return;
+                    // undo 不产生变化
+                    changed |= false;
+                    return changed;
                 }
 
                 // 开始一个新的绘画步骤
                 DrawStep drawStep = DrawStep.create(gestureAction, getBrush());
                 if (drawStep == null) {
                     CommonLog.e(TAG + " last draw step ignore current gesture action,  dispatchGestureAction create draw step null.");
-                    return;
+                    // 新步骤构建失败， undo 不产生变化
+                    changed |= false;
+                    return changed;
                 }
 
+                // 覆盖空步骤或者添加新步骤， undo 可能变化。如果当前只有一个空步骤，则变化从无到有，否则总是能够 undo, 不变化。
+                changed |= false;
                 if (lastDrawStep instanceof EmptyDrawStep) {
                     // 最后一步是一个空步骤， 覆盖该空步骤
+                    if (drawStepSize == 1) {
+                        // 当前只有一个空步骤， undo 会从无到有
+                        changed |= true;
+                    }
                     mDrawSteps.set(drawStepSize - 1, drawStep);
                 } else {
                     mDrawSteps.add(drawStep);
                 }
+                return changed;
             }
         }
 
