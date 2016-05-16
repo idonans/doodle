@@ -797,6 +797,16 @@ public class DoodleView extends FrameLayout {
 
                 DrawStep lastDrawStep = mDrawSteps.remove(size - 1);
                 mDrawStepsRedo.add(lastDrawStep);
+
+                // 如果最后一个关键帧在绘画步骤之外，则删除之(如果最后一个关键帧此时对应的刚好是最后一个绘画步骤，也需要删除之)
+                int frameSize = mFrames.size();
+                if (frameSize > 0) {
+                    FrameDrawStep lastFrame = mFrames.get(frameSize - 1);
+                    if (lastFrame.mDrawStepIndex >= size - 2) {
+                        mFrames.remove(frameSize - 1);
+                    }
+                }
+
                 return true;
             }
 
