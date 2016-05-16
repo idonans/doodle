@@ -461,12 +461,15 @@ public class DoodleView extends FrameLayout {
 
         private class TextureActionGestureListener implements GestureDetector.OnGestureListener {
             private static final String TAG = "Render$TextureActionGestureListener";
+            private boolean mDownStart = false;
 
             @Override
             public boolean onDown(MotionEvent e) {
                 if (!isAvailable()) {
                     return false;
                 }
+
+                mDownStart = true;
 
                 enqueueGestureAction(new CancelGestureAction());
                 return true;
@@ -478,8 +481,13 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
+                if (!mDownStart) {
+                    return false;
+                }
+
                 CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
+                    mDownStart = false;
                     return false;
                 }
 
@@ -490,18 +498,26 @@ public class DoodleView extends FrameLayout {
 
                 enqueueGestureAction(new SinglePointGestureAction(event));
                 enqueueGestureAction(new CancelGestureAction());
+
+                mDownStart = false;
                 return true;
             }
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                if (!mDownStart) {
+                    return false;
+                }
+
                 CanvasBuffer canvasBuffer = mCanvasBuffer;
                 if (!isAvailable()) {
+                    mDownStart = false;
                     return false;
                 }
 
                 if (e2.getPointerCount() > 1) {
                     enqueueGestureAction(new CancelGestureAction());
+                    mDownStart = false;
                     return false;
                 }
 
