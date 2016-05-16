@@ -1,5 +1,6 @@
 package com.idonans.doodle;
 
+import android.graphics.Color;
 import android.os.Bundle;
 
 import com.idonans.acommon.app.CommonActivity;
@@ -15,6 +16,7 @@ public class MainActivity extends CommonActivity {
         setContentView(R.layout.activity_main);
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
+        mDoodleView.setBrush(DoodleView.Brush.createPencil(Color.BLACK, 10));
     }
 
 }
