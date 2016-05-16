@@ -740,8 +740,10 @@ public class DoodleView extends FrameLayout {
                 }
             }
 
+            /**
+             * 将手势结合当前画笔，处理为绘画绘画步骤
+             */
             public void dispatchGestureAction(GestureAction gestureAction) {
-                // 将手势结合当前画笔，处理为绘画绘画步骤
                 int drawStepSize = mDrawSteps.size();
                 if (drawStepSize <= 0) {
                     // 第一个动作
@@ -756,8 +758,11 @@ public class DoodleView extends FrameLayout {
 
                 DrawStep lastDrawStep = mDrawSteps.get(drawStepSize - 1);
                 if (lastDrawStep.dispatchGestureAction(gestureAction, getBrush())) {
+                    // 当前绘画手势被最后一个绘画步骤继续处理
                     return;
                 }
+
+                // 开始一个新的绘画步骤
                 DrawStep drawStep = DrawStep.create(gestureAction, getBrush());
                 if (drawStep == null) {
                     CommonLog.e(TAG + " last draw step ignore current gesture action,  dispatchGestureAction create draw step null.");
