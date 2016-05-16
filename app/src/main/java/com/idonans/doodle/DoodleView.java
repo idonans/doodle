@@ -390,7 +390,7 @@ public class DoodleView extends FrameLayout {
 
                 long eventTime = detector.getEventTime();
                 MotionEvent motionEvent = MotionEvent.obtain(eventTime, eventTime, MotionEvent.ACTION_DOWN, detector.getFocusX(), detector.getFocusY(), 0);
-                motionEvent.transform(canvasBuffer.getMatrixInverse());
+                motionEvent.transform(canvasBuffer.getMatrixInvert());
                 float x = motionEvent.getX();
                 float y = motionEvent.getY();
                 boolean canScale = new RectF(0, 0, bufferWidth, bufferHeight).contains(x, y);
@@ -524,7 +524,7 @@ public class DoodleView extends FrameLayout {
                 }
 
                 MotionEvent event = MotionEvent.obtain(e);
-                event.transform(canvasBuffer.getMatrixInverse());
+                event.transform(canvasBuffer.getMatrixInvert());
 
                 CommonLog.d(TAG + " onSingleTapUp [" + e.getX() + ", " + e.getY() + "] -> [" + event.getX() + ", " + event.getY() + "]");
 
@@ -554,7 +554,7 @@ public class DoodleView extends FrameLayout {
                 }
 
                 // 单指移动
-                Matrix matrixInverse = canvasBuffer.getMatrixInverse();
+                Matrix matrixInverse = canvasBuffer.getMatrixInvert();
                 MotionEvent downEvent = MotionEvent.obtain(e1);
                 MotionEvent currentEvent = MotionEvent.obtain(e2);
 
@@ -643,7 +643,7 @@ public class DoodleView extends FrameLayout {
 
             private static final String TAG = "Render$CanvasBuffer";
             private static final int FRAMES_SIZE_MAX = 4;
-            // 关键帧之间至多间隔的 action 数量
+            // 关键帧之间至多间隔的绘画步骤数量
             private static final int FRAMES_STEP_INTERVAL_MAX = 8;
             // 关键帧缓存图像
             private final ArrayList<FrameDrawStep> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
@@ -715,7 +715,7 @@ public class DoodleView extends FrameLayout {
                 return mMatrixTmp;
             }
 
-            public Matrix getMatrixInverse() {
+            public Matrix getMatrixInvert() {
                 mMatrixInvertTmp.reset();
                 getMatrix().invert(mMatrixInvertTmp);
                 return mMatrixInvertTmp;
