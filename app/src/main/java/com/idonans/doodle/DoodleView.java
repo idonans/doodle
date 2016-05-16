@@ -10,6 +10,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
+import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.v4.view.GestureDetectorCompat;
 import android.util.AttributeSet;
@@ -60,6 +61,7 @@ public class DoodleView extends FrameLayout {
     private Render mRender;
     private RootView mRootView;
     private TextureView mTextureView;
+    private Brush mBrush;
 
     private void init() {
         mRender = new Render(getContext());
@@ -80,6 +82,20 @@ public class DoodleView extends FrameLayout {
 
     public void setCanvasBackgroundColor(int color) {
         mRootView.setBackgroundColor(color);
+    }
+
+    /**
+     * 设置画刷
+     */
+    public void setBrush(Brush brush) {
+        mBrush = brush;
+    }
+
+    /**
+     * 获得当前的画刷, 如果要更改画刷属性，需要新建一个画刷并设置
+     */
+    public Brush getBrush() {
+        return mBrush;
     }
 
     /**
@@ -446,6 +462,11 @@ public class DoodleView extends FrameLayout {
 
             @Override
             public boolean onDown(MotionEvent e) {
+                if (!isAvailable()) {
+                    return false;
+                }
+
+                enqueueGestureAction(new CancelGestureAction());
                 return true;
             }
 
@@ -465,14 +486,34 @@ public class DoodleView extends FrameLayout {
 
                 CommonLog.d(TAG + " onSingleTapUp [" + e.getX() + ", " + e.getY() + "] -> [" + event.getX() + ", " + event.getY() + "]");
 
-                enqueueAction(new PointAction(event.getX(), event.getY(), Color.RED, 50));
+                enqueueGestureAction(new SinglePointGestureAction(event));
+                enqueueGestureAction(new CancelGestureAction());
                 return true;
             }
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                // TODO Action 处理
-                return false;
+                CanvasBuffer canvasBuffer = mCanvasBuffer;
+                if (!isAvailable()) {
+                    return false;
+                }
+
+                if (e2.getPointerCount() > 1) {
+                    enqueueGestureAction(new CancelGestureAction());
+                    return false;
+                }
+
+                // 单指移动
+                Matrix matrixInverse = canvasBuffer.getMatrixInverse();
+                MotionEvent downEvent = MotionEvent.obtain(e1);
+                MotionEvent currentEvent = MotionEvent.obtain(e2);
+
+                // down event 在此处变换时可能对应的点已经有偏差，需要确保在 down 到目前位置画布没有缩放或者移动
+                downEvent.transform(matrixInverse);
+
+                currentEvent.transform(matrixInverse);
+                enqueueGestureAction(new ScrollGestureAction(downEvent, currentEvent));
+                return true;
             }
 
             @Override
@@ -525,16 +566,16 @@ public class DoodleView extends FrameLayout {
             mTaskQueue.enqueue(new Draw());
         }
 
-        public void enqueueAction(final Action action) {
+        public void enqueueGestureAction(final GestureAction gestureAction) {
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
                     if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore action " + action);
+                        CommonLog.d(TAG + " available is false, ignore GestureAction " + gestureAction);
                         return;
                     }
-                    canvasBuffer.addAction(action);
+                    canvasBuffer.dispatchGestureAction(gestureAction);
                 }
             });
             postInvalidate();
@@ -548,8 +589,8 @@ public class DoodleView extends FrameLayout {
             // 关键帧之间至多间隔的 action 数量
             private static final int FRAMES_STEP_INTERVAL_MAX = 8;
             // 关键帧缓存图像
-            private final ArrayList<Frame> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
-            private final ArrayList<Action> mActions = new ArrayList<>();
+            private final ArrayList<FrameDrawStep> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
+            private final ArrayList<DrawStep> mDrawSteps = new ArrayList<>();
 
             private static final float MAX_SCALE = 2.75f;
             private static final float MIN_SCALE = 0.75f;
@@ -625,8 +666,8 @@ public class DoodleView extends FrameLayout {
                 mBitmapCanvas.drawColor(Color.WHITE);
 
                 // 取目前关键帧中的最后两个关键帧
-                Frame f1 = null; // 最后一个关键帧
-                Frame f2 = null; // 倒数第二个关键帧
+                FrameDrawStep f1 = null; // 最后一个关键帧
+                FrameDrawStep f2 = null; // 倒数第二个关键帧
                 int framesSize = mFrames.size();
                 if (framesSize > 1) {
                     // 目前关键帧数量至少有两个
@@ -643,40 +684,40 @@ public class DoodleView extends FrameLayout {
                     f1.onDraw(mBitmapCanvas, paint);
                 }
 
-                int actionsSize = mActions.size();
-                // 绘画最后一个关键帧之后除最后一个动作外的所有动作
-                // 如果没有关键帧，则从第一个动作开始绘画
-                boolean foundActionsAfterLastFrame = false;
-                int actionIndexStart = -1;
+                int drawStepSize = mDrawSteps.size();
+                // 绘画最后一个关键帧之后除最后一个绘画步骤外的所有绘画步骤
+                // 如果没有关键帧，则从第一个绘画步骤开始绘画
+                boolean foundDrawStepsAfterLastFrame = false;
+                int drawStepIndexStart = -1;
                 if (f1 != null) {
-                    actionIndexStart = f1.actionIndex;
+                    drawStepIndexStart = f1.mDrawStepIndex;
                 }
-                for (int i = actionIndexStart + 1; i < actionsSize - 1; i++) {
-                    foundActionsAfterLastFrame = true;
-                    mActions.get(i).onDraw(mBitmapCanvas, mPaint);
+                for (int i = drawStepIndexStart + 1; i < drawStepSize - 1; i++) {
+                    foundDrawStepsAfterLastFrame = true;
+                    mDrawSteps.get(i).onDraw(mBitmapCanvas, mPaint);
                 }
 
-                if (foundActionsAfterLastFrame) {
-                    // 将目前的图像存储为一个新的关键帧(该关键帧与最终图像只差最后一个动作)
+                if (foundDrawStepsAfterLastFrame) {
+                    // 将目前的图像存储为一个新的关键帧(该关键帧与最终图像只差最后一个绘画步骤)
 
                     // 如果最后一个关键帧可以覆盖，则复用最后一个关键帧的内存
                     boolean reuseLastFrame = false;
                     if (f1 != null) {
-                        if (f2 == null && f1.actionIndex < FRAMES_STEP_INTERVAL_MAX) {
+                        if (f2 == null && f1.mDrawStepIndex < FRAMES_STEP_INTERVAL_MAX) {
                             reuseLastFrame = true;
-                        } else if (f2 != null && f1.actionIndex - f2.actionIndex < FRAMES_STEP_INTERVAL_MAX) {
+                        } else if (f2 != null && f1.mDrawStepIndex - f2.mDrawStepIndex < FRAMES_STEP_INTERVAL_MAX) {
                             reuseLastFrame = true;
                         }
                     }
 
                     Bitmap lastFrameBitmap;
                     if (reuseLastFrame) {
-                        lastFrameBitmap = f1.bitmap;
+                        lastFrameBitmap = f1.mBitmap;
                     } else {
                         lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.RGB_565);
                     }
                     new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, paint);
-                    Frame lastestFrame = new Frame(actionsSize - 2, lastFrameBitmap);
+                    FrameDrawStep lastestFrame = new FrameDrawStep(getBrush(), drawStepSize - 2, lastFrameBitmap);
 
                     if (reuseLastFrame) {
                         mFrames.set(framesSize - 1, lastestFrame);
@@ -693,72 +734,42 @@ public class DoodleView extends FrameLayout {
                     }
                 }
 
-                // 绘画最后一个动作
-                if (actionsSize > 0) {
-                    mActions.get(actionsSize - 1).onDraw(mBitmapCanvas, paint);
+                // 绘画最后一个绘画步骤
+                if (drawStepSize > 0) {
+                    mDrawSteps.get(drawStepSize - 1).onDraw(mBitmapCanvas, paint);
                 }
             }
 
-            public void addAction(Action action) {
-                mActions.add(action);
-            }
-        }
+            public void dispatchGestureAction(GestureAction gestureAction) {
+                // 将手势结合当前画笔，处理为绘画绘画步骤
+                int drawStepSize = mDrawSteps.size();
+                if (drawStepSize <= 0) {
+                    // 第一个动作
+                    DrawStep drawStep = DrawStep.create(gestureAction, getBrush());
+                    if (drawStep == null) {
+                        CommonLog.e(TAG + " dispatchGestureAction create draw step null.");
+                        return;
+                    }
+                    mDrawSteps.add(drawStep);
+                    return;
+                }
 
-        private abstract class Renderable {
-            public abstract void onDraw(@NonNull Canvas canvas, @NonNull Paint paint);
-        }
+                DrawStep lastDrawStep = mDrawSteps.get(drawStepSize - 1);
+                if (lastDrawStep.dispatchGestureAction(gestureAction, getBrush())) {
+                    return;
+                }
+                DrawStep drawStep = DrawStep.create(gestureAction, getBrush());
+                if (drawStep == null) {
+                    CommonLog.e(TAG + " last draw step ignore current gesture action,  dispatchGestureAction create draw step null.");
+                    return;
+                }
 
-        /**
-         * 帧图像
-         */
-        private class Frame extends Renderable {
-            final int actionIndex; // 该帧对应的 action index, 第一帧从 0 开始
-            final Bitmap bitmap; // 从起始到该 action index (包含) 所有动作绘画完成之后的图像
-
-            private Frame(int actionIndex, Bitmap bitmap) {
-                this.actionIndex = actionIndex;
-                this.bitmap = bitmap;
-            }
-
-            @Override
-            public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
-                canvas.drawBitmap(bitmap, 0, 0, paint);
-            }
-        }
-
-        /**
-         * 绘画动作(单步)
-         */
-        private class Action extends Renderable {
-
-            private String TAG = "Render$Action#" + getClass().getSimpleName();
-
-            @Override
-            public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
-                CommonLog.d(TAG + " onDraw");
-            }
-        }
-
-        private class PointAction extends Action {
-
-            private final float mX;
-            private final float mY;
-            private final int mColor;
-            private final int mSize;
-
-            private PointAction(float x, float y, int color, int size) {
-                mX = x;
-                mY = y;
-                mColor = color;
-                mSize = size;
-            }
-
-            @Override
-            public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
-                super.onDraw(canvas, paint);
-                paint.setColor(mColor);
-                paint.setStrokeWidth(mSize);
-                canvas.drawPoint(mX, mY, paint);
+                if (lastDrawStep instanceof EmptyDrawStep) {
+                    // 最后一步是一个空步骤， 覆盖该空步骤
+                    mDrawSteps.set(drawStepSize - 1, drawStep);
+                } else {
+                    mDrawSteps.add(drawStep);
+                }
             }
         }
 
@@ -777,6 +788,204 @@ public class DoodleView extends FrameLayout {
             return true;
         }
 
+    }
+
+    /**
+     * 绘画手势
+     */
+    public interface GestureAction {
+    }
+
+    /**
+     * 手势取消，开启一个新的手势或者标记上一个手势完结
+     */
+    public static class CancelGestureAction implements GestureAction {
+    }
+
+    /**
+     * 单指点击
+     */
+    public static class SinglePointGestureAction implements GestureAction {
+        public final MotionEvent event;
+
+        public SinglePointGestureAction(MotionEvent event) {
+            this.event = event;
+        }
+    }
+
+    /**
+     * 单指移动
+     */
+    public static class ScrollGestureAction implements GestureAction {
+        public final MotionEvent downEvent;
+        public final MotionEvent currentEvent;
+
+        public ScrollGestureAction(MotionEvent downEvent, MotionEvent currentEvent) {
+            this.downEvent = downEvent;
+            this.currentEvent = currentEvent;
+        }
+    }
+
+    /**
+     * 画刷
+     */
+    public static class Brush {
+
+        /**
+         * 铅笔
+         */
+        public final static int TYPE_PENCIL = 1;
+
+        public final int color; // 画刷的颜色
+        public final int size; // 画刷的大小
+        public final int type; // 画刷的类型
+
+        public Brush(int color, int size, int type) {
+            this.color = color;
+            this.size = size;
+            this.type = type;
+        }
+
+        public static void mustPencil(Brush brush) {
+            if (brush == null || brush.type != TYPE_PENCIL) {
+                throw new BrushNotSupportException(brush);
+            }
+        }
+    }
+
+    public static class BrushNotSupportException extends RuntimeException {
+        private final Brush mBrush;
+
+        public BrushNotSupportException(Brush brush) {
+            super("不支持的画刷 " + brush);
+            mBrush = brush;
+        }
+
+        public Brush getBrush() {
+            return mBrush;
+        }
+    }
+
+    /**
+     * 绘画步骤
+     */
+    public static class DrawStep {
+
+        private String TAG = "DrawStep#" + getClass().getSimpleName();
+        protected final Brush mDrawBrush;
+
+        public DrawStep(Brush drawBrush) {
+            mDrawBrush = drawBrush;
+        }
+
+        @CallSuper
+        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+            CommonLog.d(TAG + " onDraw");
+        }
+
+        /**
+         * 当前的绘画步骤是否继续消费该绘画手势，如果继续消费返回 true, 否则返回 false.
+         */
+        public boolean dispatchGestureAction(GestureAction gestureAction, Brush brush) {
+            if (mDrawBrush != brush) {
+                return false;
+            }
+            if (gestureAction == null || brush == null) {
+                return false;
+            }
+            return onGestureAction(gestureAction);
+        }
+
+        /**
+         * 当前的绘画步骤是否继续消费该绘画手势，如果继续消费返回 true, 否则返回 false.
+         */
+        protected boolean onGestureAction(@NonNull GestureAction gestureAction) {
+            return false;
+        }
+
+        public static DrawStep create(GestureAction gestureAction, Brush brush) {
+            if (gestureAction == null
+                    || gestureAction instanceof CancelGestureAction
+                    || brush == null) {
+                return new EmptyDrawStep(brush);
+            }
+
+            if (gestureAction instanceof SinglePointGestureAction) {
+                SinglePointGestureAction singlePointGestureAction = (SinglePointGestureAction) gestureAction;
+                if (brush.type == Brush.TYPE_PENCIL) {
+                    return new PointDrawStep(brush, singlePointGestureAction.event.getX(), singlePointGestureAction.event.getY());
+                }
+            }
+
+            // TODO
+
+            return new EmptyDrawStep(brush);
+        }
+    }
+
+    /**
+     * 空的绘画步骤
+     */
+    public final static class EmptyDrawStep extends DrawStep {
+
+        public EmptyDrawStep(Brush drawBrush) {
+            super(drawBrush);
+        }
+
+        @Override
+        protected boolean onGestureAction(GestureAction gestureAction) {
+            if (gestureAction instanceof CancelGestureAction) {
+                return true;
+            }
+            return false;
+        }
+
+    }
+
+    /**
+     * 帧图像, 画一张图
+     */
+    public static class FrameDrawStep extends DrawStep {
+        private final int mDrawStepIndex; // 该帧对应的 draw step index, 绘画步骤从 0 开始
+        private final Bitmap mBitmap; // 从0到该 draw step index (包含) 所有绘画步骤完成之后的图像
+
+        public FrameDrawStep(Brush drawBrush, int drawStepIndex, Bitmap bitmap) {
+            super(drawBrush);
+            mDrawStepIndex = drawStepIndex;
+            mBitmap = bitmap;
+        }
+
+        @Override
+        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+            super.onDraw(canvas, paint);
+            paint.reset();
+            canvas.drawBitmap(mBitmap, 0f, 0f, paint);
+        }
+    }
+
+    /**
+     * 画点
+     */
+    public static class PointDrawStep extends DrawStep {
+
+        private final float mX;
+        private final float mY;
+
+        public PointDrawStep(Brush drawBrush, float x, float y) {
+            super(drawBrush);
+            Brush.mustPencil(drawBrush);
+
+            mX = x;
+            mY = y;
+        }
+
+        @Override
+        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+            super.onDraw(canvas, paint);
+            paint.reset();
+            paint.setColor(mDrawBrush.color);
+            canvas.drawCircle(mX, mY, mDrawBrush.size, paint);
+        }
     }
 
 }
