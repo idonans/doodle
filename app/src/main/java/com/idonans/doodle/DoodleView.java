@@ -860,6 +860,15 @@ public class DoodleView extends FrameLayout {
                 throw new BrushNotSupportException(brush);
             }
         }
+
+        /**
+         * 将当前画刷配置到指定画笔上
+         */
+        public void fillPaint(Paint paint) {
+            paint.reset();
+            paint.setColor(color);
+            paint.setAntiAlias(true); // 抗锯齿
+        }
     }
 
     public static class BrushNotSupportException extends RuntimeException {
@@ -967,7 +976,6 @@ public class DoodleView extends FrameLayout {
         @Override
         public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
             super.onDraw(canvas, paint);
-            paint.reset();
             canvas.drawBitmap(mBitmap, 0f, 0f, paint);
         }
     }
@@ -991,8 +999,7 @@ public class DoodleView extends FrameLayout {
         @Override
         public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
             super.onDraw(canvas, paint);
-            paint.reset();
-            paint.setColor(mDrawBrush.color);
+            mDrawBrush.fillPaint(paint);
             canvas.drawCircle(mX, mY, mDrawBrush.size, paint);
         }
     }
