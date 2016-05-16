@@ -1024,6 +1024,7 @@ public class DoodleView extends FrameLayout {
      */
     public static class ScribbleDrawStep extends DrawStep {
 
+        private static final String TAG = "ScribbleDrawStep";
         private final Path mPath;
 
         public ScribbleDrawStep(Brush drawBrush, float startX, float startY, float moveX, float moveY) {
@@ -1042,6 +1043,14 @@ public class DoodleView extends FrameLayout {
             }
 
             ScrollGestureAction scrollGestureAction = (ScrollGestureAction) gestureAction;
+
+            int historySize = scrollGestureAction.currentEvent.getHistorySize();
+            CommonLog.d(TAG + " history size: " + historySize);
+            for (int i = 0; i < historySize; i++) {
+                mPath.lineTo(scrollGestureAction.currentEvent.getHistoricalX(i),
+                        scrollGestureAction.currentEvent.getHistoricalY(i));
+            }
+
             mPath.lineTo(scrollGestureAction.currentEvent.getX(),
                     scrollGestureAction.currentEvent.getY());
             return true;
