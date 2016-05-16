@@ -27,6 +27,7 @@ import com.idonans.acommon.lang.Available;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.lang.Threads;
+import com.idonans.acommon.util.DimenUtil;
 
 import java.util.ArrayList;
 
@@ -1043,6 +1044,7 @@ public class DoodleView extends FrameLayout {
     public static class ScribbleDrawStep extends DrawStep {
 
         private static final String TAG = "ScribbleDrawStep";
+        private static final int MAX_LINE_DISTANCE = DimenUtil.dp2px(2);
         private final Path mPath;
         private float mPreX;
         private float mPreY;
@@ -1064,9 +1066,12 @@ public class DoodleView extends FrameLayout {
         private void toPoint(float x, float y) {
             final float dx = Math.abs(x - mPreX);
             final float dy = Math.abs(y - mPreY);
-            if (dx >= 3 || dy >= 3) {
+            CommonLog.d(TAG + " xxx dx:" + dx + ", dy:" + dy);
+            if (dx > MAX_LINE_DISTANCE || dy > MAX_LINE_DISTANCE) {
+                // 当两点之间间距可能较大时，使用贝塞尔去绘制，线条更平滑
                 mPath.quadTo(mPreX, mPreY, (mPreX + x) / 2, (mPreY + y) / 2);
             } else {
+                // 两点间距小，说明滑动速度慢，按照轨迹精确绘制
                 mPath.lineTo(x, y);
             }
             mPreX = x;
