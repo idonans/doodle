@@ -223,6 +223,41 @@ public class DoodleView extends FrameLayout {
         }
     }
 
+    /**
+     * 指定操作的结果回调， 如回退和恢复操作
+     */
+    public interface ActionCallback {
+        void onActionResult(boolean success);
+    }
+
+    /**
+     * 是否可以回退
+     */
+    public void canUndo(ActionCallback callback) {
+        mRender.canUndo(callback);
+    }
+
+    /**
+     * 回退操作，回退成功，返回 true, 否则返回 false.
+     */
+    public void undo(ActionCallback callback) {
+        mRender.undo(callback);
+    }
+
+    /**
+     * 是否可以前进, undo 之后的反向恢复
+     */
+    public void canRedo(ActionCallback callback) {
+        mRender.canRedo(callback);
+    }
+
+    /**
+     * 反向恢复，恢复成功，返回 true, 否则返回 false.
+     */
+    public void redo(ActionCallback callback) {
+        mRender.redo(callback);
+    }
+
     private class Render implements Available {
 
         private static final String TAG = "Render";
@@ -638,6 +673,77 @@ public class DoodleView extends FrameLayout {
             postInvalidate();
         }
 
+        /**
+         * 是否可以回退
+         */
+        public void canUndo(final ActionCallback callback) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore canUndo");
+                        return;
+                    }
+
+                    callback.onActionResult(canvasBuffer.canUndo());
+                }
+            });
+        }
+
+        /**
+         * 回退操作，回退成功，返回 true, 否则返回 false.
+         */
+        public void undo(final ActionCallback callback) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore undo");
+                        return;
+                    }
+
+                    callback.onActionResult(canvasBuffer.undo());
+                }
+            });
+        }
+
+        /**
+         * 是否可以前进, undo 之后的反向恢复
+         */
+        public void canRedo(final ActionCallback callback) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore canRedo");
+                        return;
+                    }
+
+                    callback.onActionResult(canvasBuffer.canRedo());
+                }
+            });
+        }
+
+        /**
+         * 反向恢复，恢复成功，返回 true, 否则返回 false.
+         */
+        public void redo(final ActionCallback callback) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore redo");
+                        return;
+                    }
+
+                    callback.onActionResult(canvasBuffer.redo());
+                }
+            });
+        }
 
         private class CanvasBuffer {
 
@@ -648,6 +754,7 @@ public class DoodleView extends FrameLayout {
             // 关键帧缓存图像
             private final ArrayList<FrameDrawStep> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
             private final ArrayList<DrawStep> mDrawSteps = new ArrayList<>();
+            private final ArrayList<DrawStep> mDrawStepsRedo = new ArrayList<>();
 
             private static final float MAX_SCALE = 2.75f;
             private static final float MIN_SCALE = 0.75f;
@@ -670,6 +777,48 @@ public class DoodleView extends FrameLayout {
 
                 mMatrixTmp = new Matrix();
                 mMatrixInvertTmp = new Matrix();
+            }
+
+            /**
+             * 小心线程. 是否可以回退
+             */
+            public boolean canUndo() {
+                return mDrawSteps.size() > 0;
+            }
+
+            /**
+             * 小心线程. 回退操作，回退成功，返回 true, 否则返回 false.
+             */
+            public boolean undo() {
+                int size = mDrawSteps.size();
+                if (size <= 0) {
+                    return false;
+                }
+
+                DrawStep lastDrawStep = mDrawSteps.remove(size - 1);
+                mDrawStepsRedo.add(lastDrawStep);
+                return true;
+            }
+
+            /**
+             * 小心线程. 是否可以前进, undo 之后的反向恢复
+             */
+            public boolean canRedo() {
+                return mDrawStepsRedo.size() > 0;
+            }
+
+            /**
+             * 小心线程. 反向恢复，恢复成功，返回 true, 否则返回 false.
+             */
+            public boolean redo() {
+                int size = mDrawStepsRedo.size();
+                if (size <= 0) {
+                    return false;
+                }
+
+                DrawStep lastDrawStep = mDrawStepsRedo.remove(size - 1);
+                mDrawSteps.add(lastDrawStep);
+                return true;
             }
 
             public void setMatrix(Matrix matrix) {
