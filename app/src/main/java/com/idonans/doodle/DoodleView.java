@@ -345,16 +345,12 @@ public class DoodleView extends FrameLayout {
         private final GestureDetectorCompat mCanvasTranslationGestureDetectorCompat;
         private final GestureDetectorCompat mTextureActionGestureDetectorCompat;
 
-        private final Paint mPaint;
-
         private Render(Context context) {
             mCanvasScaleGestureDetector = new TwoPointScaleGestureDetector(context, new CanvasScaleGestureListener());
             mCanvasTranslationGestureDetectorCompat = new GestureDetectorCompat(context, new CanvasTranslationGestureListener());
             mCanvasTranslationGestureDetectorCompat.setIsLongpressEnabled(false);
             mTextureActionGestureDetectorCompat = new GestureDetectorCompat(context, new TextureActionGestureListener());
             mTextureActionGestureDetectorCompat.setIsLongpressEnabled(false);
-
-            mPaint = new Paint();
         }
 
         private class TwoPointScaleGestureDetector extends ScaleGestureDetector {
@@ -708,8 +704,7 @@ public class DoodleView extends FrameLayout {
 
                     // 将缓冲区中的内容绘画到 canvas 上
                     long timeStart = System.currentTimeMillis();
-                    resetPaint(mPaint);
-                    canvasBuffer.draw(canvas, mPaint);
+                    canvasBuffer.draw(canvas);
                     long lastDrawingTime = System.currentTimeMillis() - timeStart;
                     canvasBuffer.setLastDrawingTime(lastDrawingTime);
                 } catch (Exception e) {
@@ -844,7 +839,6 @@ public class DoodleView extends FrameLayout {
 
             public CanvasBuffer(int canvasWidth, int canvasHeight) {
                 mBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888);
-                mBitmap.setHasAlpha(true);
                 mBitmapWidth = mBitmap.getWidth();
                 mBitmapHeight = mBitmap.getHeight();
                 mBitmapCanvas = new Canvas(mBitmap);
@@ -1004,14 +998,14 @@ public class DoodleView extends FrameLayout {
                 return mMatrixInvertTmp;
             }
 
-            public void draw(Canvas canvas, Paint paint) {
+            public void draw(Canvas canvas) {
                 CommonLog.d(TAG + " draw");
-                refreshBuffer(paint);
-                canvas.drawBitmap(mBitmap, 0f, 0f, paint);
+                refreshBuffer();
+                canvas.drawBitmap(mBitmap, 0f, 0f, null);
             }
 
             // 重新绘制缓冲区
-            private void refreshBuffer(Paint paint) {
+            private void refreshBuffer() {
                 // 清空背景
                 mBitmapCanvas.drawColor(Color.WHITE);
 
@@ -1031,7 +1025,7 @@ public class DoodleView extends FrameLayout {
 
                 // 绘画最后一个关键帧 (最后一个关键帧之前的图像不必重新绘画)
                 if (f1 != null) {
-                    f1.onDraw(mBitmapCanvas, paint);
+                    f1.onDraw(mBitmapCanvas);
                 }
 
                 int drawStepSize = mDrawSteps.size();
@@ -1044,7 +1038,7 @@ public class DoodleView extends FrameLayout {
                 }
                 for (int i = drawStepIndexStart + 1; i < drawStepSize - 1; i++) {
                     foundDrawStepsAfterLastFrame = true;
-                    mDrawSteps.get(i).onDraw(mBitmapCanvas, mPaint);
+                    mDrawSteps.get(i).onDraw(mBitmapCanvas);
                 }
 
                 if (foundDrawStepsAfterLastFrame) {
@@ -1065,30 +1059,28 @@ public class DoodleView extends FrameLayout {
                         lastFrameBitmap = f1.mBitmap;
                     } else {
                         lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
-                        lastFrameBitmap.setHasAlpha(true);
                     }
-                    resetPaint(paint);
-                    new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, paint);
-                    FrameDrawStep lastestFrame = new FrameDrawStep(getBrush(), drawStepSize - 2, lastFrameBitmap);
+                    new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, null);
+                    FrameDrawStep latestFrame = new FrameDrawStep(null, drawStepSize - 2, lastFrameBitmap);
 
                     if (reuseLastFrame) {
-                        mFrames.set(framesSize - 1, lastestFrame);
+                        mFrames.set(framesSize - 1, latestFrame);
                     } else {
                         if (framesSize >= FRAMES_SIZE_MAX) {
                             // 关键帧过多，删除第一个，依次向前移动，新的关键帧放到最后一个位置
                             for (int i = 0; i < framesSize - 1; i++) {
                                 mFrames.set(i, mFrames.get(i + 1));
                             }
-                            mFrames.set(framesSize - 1, lastestFrame);
+                            mFrames.set(framesSize - 1, latestFrame);
                         } else {
-                            mFrames.add(lastestFrame);
+                            mFrames.add(latestFrame);
                         }
                     }
                 }
 
                 // 绘画最后一个绘画步骤
                 if (drawStepSize > 0) {
-                    mDrawSteps.get(drawStepSize - 1).onDraw(mBitmapCanvas, paint);
+                    mDrawSteps.get(drawStepSize - 1).onDraw(mBitmapCanvas);
                 }
             }
 
@@ -1234,10 +1226,10 @@ public class DoodleView extends FrameLayout {
         }
 
         /**
-         * 将当前画刷配置到指定画笔上
+         * 根据当前画刷配置创建画笔
          */
-        public void fillPaint(Paint paint) {
-            paint.reset();
+        protected Paint createPaint() {
+            Paint paint = new Paint();
             paint.setColor(color);
             paint.setAlpha(alpha);
             paint.setStrokeWidth(size);
@@ -1246,7 +1238,9 @@ public class DoodleView extends FrameLayout {
             paint.setStrokeCap(Paint.Cap.ROUND); // 笔刷样式 圆形
             paint.setDither(true); // 图像抖动处理 使图像更清晰
             paint.setAntiAlias(true); // 抗锯齿
+            return paint;
         }
+
     }
 
     public static class BrushNotSupportException extends RuntimeException {
@@ -1269,13 +1263,19 @@ public class DoodleView extends FrameLayout {
 
         private String TAG = "DrawStep#" + getClass().getSimpleName();
         protected final Brush mDrawBrush;
+        protected final Paint mDrawPaint;
 
         public DrawStep(Brush drawBrush) {
             mDrawBrush = drawBrush;
+            if (mDrawBrush != null) {
+                mDrawPaint = mDrawBrush.createPaint();
+            } else {
+                mDrawPaint = null;
+            }
         }
 
         @CallSuper
-        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
+        public void onDraw(@NonNull Canvas canvas) {
             CommonLog.d(TAG + " onDraw");
         }
 
@@ -1364,10 +1364,9 @@ public class DoodleView extends FrameLayout {
         }
 
         @Override
-        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
-            super.onDraw(canvas, paint);
-            resetPaint(paint);
-            canvas.drawBitmap(mBitmap, 0f, 0f, paint);
+        public void onDraw(@NonNull Canvas canvas) {
+            super.onDraw(canvas);
+            canvas.drawBitmap(mBitmap, 0f, 0f, null);
         }
     }
 
@@ -1388,11 +1387,9 @@ public class DoodleView extends FrameLayout {
         }
 
         @Override
-        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
-            super.onDraw(canvas, paint);
-            mDrawBrush.fillPaint(paint);
-
-            canvas.drawPoint(mX, mY, paint);
+        public void onDraw(@NonNull Canvas canvas) {
+            super.onDraw(canvas);
+            canvas.drawPoint(mX, mY, mDrawPaint);
         }
     }
 
@@ -1448,19 +1445,11 @@ public class DoodleView extends FrameLayout {
         }
 
         @Override
-        public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
-            super.onDraw(canvas, paint);
-            mDrawBrush.fillPaint(paint);
-
-            canvas.drawPath(mPath, paint);
+        public void onDraw(@NonNull Canvas canvas) {
+            super.onDraw(canvas);
+            canvas.drawPath(mPath, mDrawPaint);
         }
 
-    }
-
-    private static void resetPaint(Paint paint) {
-        paint.reset();
-        paint.setColor(Color.WHITE);
-        paint.setAlpha(255);
     }
 
 }
