@@ -1036,9 +1036,8 @@ public class DoodleView extends FrameLayout {
         public void onDraw(@NonNull Canvas canvas, @NonNull Paint paint) {
             super.onDraw(canvas, paint);
             mDrawBrush.fillPaint(paint);
-            paint.setStyle(Paint.Style.FILL);
 
-            canvas.drawCircle(mX, mY, mDrawBrush.size, paint);
+            canvas.drawPoint(mX, mY, paint);
         }
     }
 
