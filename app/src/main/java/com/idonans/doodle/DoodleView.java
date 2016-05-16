@@ -883,6 +883,7 @@ public class DoodleView extends FrameLayout {
              * 小心线程. 是否可以回退
              */
             public boolean canUndo() {
+                // 如果当前绘画步骤中只有一个 EmptyDrawStep, 则不能回退
                 if (hasEmptyDrawStepOnEnd()) {
                     return mDrawSteps.size() > 1;
                 }
@@ -900,6 +901,8 @@ public class DoodleView extends FrameLayout {
 
                 DrawStep lastDrawStep;
                 int size = mDrawSteps.size();
+                // 如果当前绘画步骤末尾是 EmptyDrawStep, 则回退时跳过末尾，回退末尾的前一步
+                // 此处不必考虑当前绘画步骤中只有一个 EmptyDrawStep 的情况，前面的 canUndo 判断中已经过滤了此种情形。
                 if (hasEmptyDrawStepOnEnd()) {
                     lastDrawStep = mDrawSteps.remove(size - 2);
                 } else {
@@ -939,6 +942,7 @@ public class DoodleView extends FrameLayout {
 
                 DrawStep lastDrawStep = mDrawStepsRedo.remove(size - 1);
 
+                // 如果当前绘画步骤末尾是 EmptyDrawStep, 则将恢复的绘画步骤插入到末尾之前。
                 if (hasEmptyDrawStepOnEnd()) {
                     mDrawSteps.add(mDrawSteps.size() - 1, lastDrawStep);
                 } else {
