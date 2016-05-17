@@ -18,7 +18,6 @@ import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.TextureView;
@@ -32,6 +31,7 @@ import com.idonans.acommon.lang.Threads;
 import java.util.ArrayList;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+
 
 /**
  * 涂鸦板
@@ -62,29 +62,18 @@ public class DoodleView extends FrameLayout {
 
     private static final String TAG = "DoodleView";
     private Render mRender;
-    private RootView mRootView;
     private TextureView mTextureView;
     private Brush mBrush;
 
     private void init() {
         mRender = new Render(getContext());
 
-        mRootView = new RootView(getContext());
         mTextureView = new TextureView(getContext());
-        mRootView.addView(mTextureView, new LayoutParams(MATCH_PARENT, MATCH_PARENT));
-
-        LayoutParams rootViewLayouts = new LayoutParams(MATCH_PARENT, MATCH_PARENT);
-        rootViewLayouts.gravity = Gravity.CENTER;
-        addView(mRootView, rootViewLayouts);
+        addView(mTextureView, new LayoutParams(MATCH_PARENT, MATCH_PARENT));
 
         mTextureView.setSurfaceTextureListener(new TextureListener());
 
         setAspectRatio(3, 4);
-        setCanvasBackgroundColor(Color.DKGRAY);
-    }
-
-    public void setCanvasBackgroundColor(int color) {
-        mRootView.setBackgroundColor(color);
     }
 
     /**
@@ -109,72 +98,48 @@ public class DoodleView extends FrameLayout {
         requestLayout();
     }
 
-    private class RootView extends FrameLayout {
-
-        private final String TAG = "DoodleView$RootView";
-
-        public RootView(Context context) {
-            super(context);
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        int action = MotionEventCompat.getActionMasked(event);
+        if (action == MotionEvent.ACTION_DOWN) {
+            requestDisallowInterceptTouchEvent(true);
         }
 
-        @Override
-        public boolean dispatchTouchEvent(MotionEvent event) {
-            mRender.onTouchEvent(event);
-            return true;
-        }
+        mRender.onTouchEvent(event);
+        return true;
+    }
 
-        @Override
-        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            final int originalWidth = MeasureSpec.getSize(widthMeasureSpec);
-            final int originalHeight = MeasureSpec.getSize(heightMeasureSpec);
-            if (originalWidth <= 0 || originalHeight <= 0) {
-                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-                return;
-            }
-
-            // 先按照整宽计算
-            int targetWidth = originalWidth;
-            int targetHeight = Float.valueOf(1f * targetWidth * mRender.mAspectHeight / mRender.mAspectWidth).intValue();
-            if (targetHeight <= originalHeight) {
-                // 调整，使得宽高比完美匹配
-                targetWidth -= targetWidth % mRender.mAspectWidth;
-                targetHeight = targetWidth * mRender.mAspectHeight / mRender.mAspectWidth;
-                super.onMeasure(
-                        MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
-                return;
-            }
-
-            // 按照整高计算
-            targetHeight = originalHeight;
-            targetWidth = Float.valueOf(1f * targetHeight * mRender.mAspectWidth / mRender.mAspectHeight).intValue();
-            if (targetWidth > originalWidth) {
-                throw new RuntimeException("measure error");
-            }
-
+    /**
+     * 根据指定宽高比将 width, height 调整为最佳尺寸 (不超出范围并且宽高比完美匹配)
+     */
+    private static int[] calculatePerfectSizeWithAspect(int width, int height, int aspectWidth, int aspectHeight) {
+        // 先按照整宽计算
+        int targetWidth = width;
+        int targetHeight = Float.valueOf(1f * targetWidth * aspectHeight / aspectWidth).intValue();
+        if (targetHeight <= height) {
             // 调整，使得宽高比完美匹配
-            targetHeight -= targetHeight % mRender.mAspectHeight;
-            targetWidth = targetHeight * mRender.mAspectWidth / mRender.mAspectHeight;
-
-            super.onMeasure(
-                    MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
-                    MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
+            targetWidth -= targetWidth % aspectWidth;
+            targetHeight = targetWidth * aspectHeight / aspectWidth;
+            return new int[]{targetWidth, targetHeight};
         }
 
+        // 按照整高计算
+        targetHeight = height;
+        targetWidth = Float.valueOf(1f * targetHeight * aspectWidth / aspectHeight).intValue();
+        if (targetWidth > width) {
+            throw new RuntimeException("measure error");
+        }
+
+        // 调整，使得宽高比完美匹配
+        targetHeight -= targetHeight % aspectHeight;
+        targetWidth = targetHeight * aspectWidth / aspectHeight;
+        return new int[]{targetWidth, targetHeight};
     }
 
     private class TextureListener implements TextureView.SurfaceTextureListener {
 
         private final String TAG = "DoodleView$TextureListener";
 
-        /**
-         * Invoked when a {@link TextureView}'s SurfaceTexture is ready for use.
-         *
-         * @param surface The surface returned by
-         *                {@link TextureView#getSurfaceTexture()}
-         * @param width   The width of the surface
-         * @param height  The height of the surface
-         */
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             CommonLog.d(TAG + " onSurfaceTextureAvailable width:" + width + ", height:" + height);
@@ -182,28 +147,12 @@ public class DoodleView extends FrameLayout {
             mRender.setTextureEnable(true);
         }
 
-        /**
-         * Invoked when the {@link SurfaceTexture}'s buffers size changed.
-         *
-         * @param surface The surface returned by
-         *                {@link TextureView#getSurfaceTexture()}
-         * @param width   The new width of the surface
-         * @param height  The new height of the surface
-         */
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
             CommonLog.d(TAG + " onSurfaceTextureSizeChanged width:" + width + ", height:" + height);
             mRender.init(width, height);
         }
 
-        /**
-         * Invoked when the specified {@link SurfaceTexture} is about to be destroyed.
-         * If returns true, no rendering should happen inside the surface texture after this method
-         * is invoked. If returns false, the client needs to call {@link SurfaceTexture#release()}.
-         * Most applications should return true.
-         *
-         * @param surface The surface about to be destroyed
-         */
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
             CommonLog.d(TAG + " onSurfaceTextureDestroyed");
@@ -211,12 +160,6 @@ public class DoodleView extends FrameLayout {
             return true;
         }
 
-        /**
-         * Invoked when the specified {@link SurfaceTexture} is updated through
-         * {@link SurfaceTexture#updateTexImage()}.
-         *
-         * @param surface The surface just updated
-         */
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
             CommonLog.d(TAG + " onSurfaceTextureUpdated");
@@ -390,16 +333,22 @@ public class DoodleView extends FrameLayout {
         private void init(int width, int height) {
             synchronized (mBufferLock) {
                 if (mCanvasBuffer != null) {
-                    CommonLog.d(TAG + " canvas buffer found [" + mAspectWidth + ", " + mAspectHeight + "]:[" + width + ", " + height + "]");
+                    CommonLog.d(TAG + " canvas buffer found " + mCanvasBuffer.toShortString()
+                            + ", current aspect [" + mAspectWidth + ", " + mAspectHeight + "], [" + width + ", " + height + "]");
+                    if (mCanvasBuffer.mTextureWidth != width || mCanvasBuffer.mTextureHeight != height) {
+                        CommonLog.e(TAG + " current canvas buffer texture size not match");
+                    }
                     return;
                 }
 
-                // 校验宽高比是否匹配
-                if (mAspectWidth * height != mAspectHeight * width) {
-                    CommonLog.d(TAG + " aspect radio not match , [" + mAspectWidth + ", " + mAspectHeight + "]:[" + width + ", " + height + "]");
-                    return;
-                }
-                mCanvasBuffer = new CanvasBuffer(width, height);
+                int[] canvasBufferSize = calculatePerfectSizeWithAspect(width, height, mAspectWidth, mAspectHeight);
+                CommonLog.d(new StringBuilder()
+                        .append(TAG)
+                        .append(" create canvas buffer")
+                        .append(", texture size [" + width + ", " + height + "]")
+                        .append(", current aspect [" + mAspectWidth + ", " + mAspectHeight + "]")
+                        .append(", canvas buffer size [" + canvasBufferSize[0] + ", " + canvasBufferSize[1] + "]"));
+                mCanvasBuffer = new CanvasBuffer(width, height, canvasBufferSize[0], canvasBufferSize[1]);
             }
         }
 
@@ -699,7 +648,7 @@ public class DoodleView extends FrameLayout {
                     }
 
                     // 清空背景
-                    canvas.drawColor(Color.WHITE);
+                    canvas.drawColor(Color.TRANSPARENT);
 
                     // 将缓冲区中的内容绘画到 canvas 上
                     long timeStart = System.currentTimeMillis();
@@ -826,6 +775,9 @@ public class DoodleView extends FrameLayout {
             private static final float MAX_SCALE = 2.75f;
             private static final float MIN_SCALE = 0.75f;
 
+            private final int mTextureWidth;
+            private final int mTextureHeight;
+
             private final Bitmap mBitmap; // 当前画布图像(绘画缓冲区)
             private final int mBitmapWidth; // 当前画布图像宽度
             private final int mBitmapHeight; // 当前画布图像高度
@@ -836,7 +788,10 @@ public class DoodleView extends FrameLayout {
 
             private long mLastDrawingTime;
 
-            public CanvasBuffer(int canvasWidth, int canvasHeight) {
+            public CanvasBuffer(int textureWidth, int textureHeight, int canvasWidth, int canvasHeight) {
+                mTextureWidth = textureWidth;
+                mTextureHeight = textureHeight;
+
                 mBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888);
                 mBitmapWidth = mBitmap.getWidth();
                 mBitmapHeight = mBitmap.getHeight();
@@ -844,6 +799,13 @@ public class DoodleView extends FrameLayout {
 
                 mMatrixTmp = new Matrix();
                 mMatrixInvertTmp = new Matrix();
+            }
+
+            public String toShortString() {
+                return new StringBuilder()
+                        .append("CanvasBuffer bitmap size [" + mBitmapWidth + ", " + mBitmapHeight + "]")
+                        .append(", texture size [" + mTextureWidth + ", " + mTextureHeight + "]")
+                        .toString();
             }
 
             /**
@@ -1140,7 +1102,7 @@ public class DoodleView extends FrameLayout {
         }
 
         /**
-         * root 上的触摸事件
+         * DoodleView 上的触摸事件
          */
         public boolean onTouchEvent(MotionEvent event) {
             if (!isAvailable()) {
