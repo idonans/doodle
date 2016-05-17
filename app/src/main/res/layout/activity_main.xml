@@ -31,7 +31,7 @@
             android:text="设置画笔"/>
     </LinearLayout>
 
-    <com.idonans.app.DoodleView
+    <com.idonans.doodle.DoodleView
         android:id="@+id/doodle_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

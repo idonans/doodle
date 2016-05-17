@@ -12,6 +12,7 @@ import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.app.CommonFragment;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
+import com.idonans.doodle.DoodleView;
 
 import java.util.ArrayList;
 

@@ -1,4 +1,4 @@
-package com.idonans.app;
+package com.idonans.doodle;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -22,7 +22,6 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.TextureView;
-import android.view.View;
 import android.widget.FrameLayout;
 
 import com.idonans.acommon.lang.Available;
@@ -72,9 +71,9 @@ public class DoodleView extends FrameLayout {
 
         mRootView = new RootView(getContext());
         mTextureView = new TextureView(getContext());
-        mRootView.addView(mTextureView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+        mRootView.addView(mTextureView, new LayoutParams(MATCH_PARENT, MATCH_PARENT));
 
-        FrameLayout.LayoutParams rootViewLayouts = new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT);
+        LayoutParams rootViewLayouts = new LayoutParams(MATCH_PARENT, MATCH_PARENT);
         rootViewLayouts.gravity = Gravity.CENTER;
         addView(mRootView, rootViewLayouts);
 
@@ -126,8 +125,8 @@ public class DoodleView extends FrameLayout {
 
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            final int originalWidth = View.MeasureSpec.getSize(widthMeasureSpec);
-            final int originalHeight = View.MeasureSpec.getSize(heightMeasureSpec);
+            final int originalWidth = MeasureSpec.getSize(widthMeasureSpec);
+            final int originalHeight = MeasureSpec.getSize(heightMeasureSpec);
             if (originalWidth <= 0 || originalHeight <= 0) {
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec);
                 return;
@@ -141,8 +140,8 @@ public class DoodleView extends FrameLayout {
                 targetWidth -= targetWidth % mRender.mAspectWidth;
                 targetHeight = targetWidth * mRender.mAspectHeight / mRender.mAspectWidth;
                 super.onMeasure(
-                        View.MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
-                        View.MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
+                        MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
+                        MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
                 return;
             }
 
@@ -158,8 +157,8 @@ public class DoodleView extends FrameLayout {
             targetWidth = targetHeight * mRender.mAspectWidth / mRender.mAspectHeight;
 
             super.onMeasure(
-                    View.MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
+                    MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY));
         }
 
     }
