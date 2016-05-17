@@ -270,7 +270,7 @@ public class DoodleView extends FrameLayout {
 
     private class Render implements Available {
 
-        private static final String TAG = "Render";
+        private static final String TAG = "DoodleView$Render";
 
         // 画布的宽高比
         private int mAspectWidth = 1;
