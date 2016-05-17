@@ -6,11 +6,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
-import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
@@ -26,6 +23,10 @@ import com.idonans.acommon.lang.Available;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.lang.Threads;
+import com.idonans.doodle.brush.Brush;
+import com.idonans.doodle.brush.None;
+import com.idonans.doodle.drawstep.DrawStep;
+import com.idonans.doodle.drawstep.EmptyDrawStep;
 
 import java.util.ArrayList;
 
@@ -60,8 +61,14 @@ public class DoodleView extends FrameLayout {
     }
 
     private static final String TAG = "DoodleView";
+
+    @NonNull
     private Render mRender;
+
+    @NonNull
     private TextureView mTextureView;
+
+    @NonNull
     private Brush mBrush;
 
     private void init() {
@@ -71,6 +78,7 @@ public class DoodleView extends FrameLayout {
         addView(mTextureView, new LayoutParams(MATCH_PARENT, MATCH_PARENT));
 
         mTextureView.setSurfaceTextureListener(new TextureListener());
+        mBrush = new None();
 
         setAspectRatio(3, 4);
     }
@@ -78,13 +86,14 @@ public class DoodleView extends FrameLayout {
     /**
      * 设置画刷
      */
-    public void setBrush(Brush brush) {
+    public void setBrush(@NonNull Brush brush) {
         mBrush = brush;
     }
 
     /**
      * 获得当前的画刷, 如果要更改画刷属性，需要新建一个画刷并设置
      */
+    @NonNull
     public Brush getBrush() {
         return mBrush;
     }
@@ -917,14 +926,6 @@ public class DoodleView extends FrameLayout {
                 setMatrix(matrix);
             }
 
-            public int getBufferWidth() {
-                return mBitmapWidth;
-            }
-
-            public int getBufferHeight() {
-                return mBitmapHeight;
-            }
-
             public void setLastDrawingTime(long lastDrawingTime) {
                 mLastDrawingTime = lastDrawingTime;
             }
@@ -1042,15 +1043,12 @@ public class DoodleView extends FrameLayout {
 
                 int drawStepSize = mDrawSteps.size();
                 if (drawStepSize <= 0) {
-                    // 第一个动作
-                    DrawStep drawStep = DrawStep.create(gestureAction, getBrush());
-                    if (drawStep == null) {
-                        CommonLog.e(TAG + " dispatchGestureAction create draw step null.");
-                        return changed;
-                    }
+                    // 第一个绘画步骤
+                    DrawStep drawStep = mBrush.createDrawStep(gestureAction);
                     mDrawSteps.add(drawStep);
-                    // 第一个绘画步骤， undo 从无到有
-                    changed |= true;
+                    // 如果新步骤是一个空步骤，则 undo 不会变更
+                    boolean isNewEmptyDrawStep = drawStep instanceof EmptyDrawStep;
+                    changed |= !isNewEmptyDrawStep;
                     return changed;
                 }
 
@@ -1063,24 +1061,23 @@ public class DoodleView extends FrameLayout {
                 }
 
                 // 开始一个新的绘画步骤
-                DrawStep drawStep = DrawStep.create(gestureAction, getBrush());
-                if (drawStep == null) {
-                    CommonLog.e(TAG + " last draw step ignore current gesture action,  dispatchGestureAction create draw step null.");
-                    // 新步骤构建失败， undo 不产生变化
-                    changed |= false;
-                    return changed;
-                }
+                DrawStep drawStep = mBrush.createDrawStep(gestureAction);
+                // 如果新步骤是一个空步骤，则 undo 不会变更
+                boolean isNewEmptyDrawStep = drawStep instanceof EmptyDrawStep;
 
-                // 覆盖空步骤或者添加新步骤， undo 可能变化。如果当前只有一个空步骤，则变化从无到有，否则总是能够 undo, 不变化。
+                // 覆盖空步骤或者添加新步骤， undo 可能变化
                 changed |= false;
+
                 if (lastDrawStep instanceof EmptyDrawStep) {
                     // 最后一步是一个空步骤， 覆盖该空步骤
+
                     if (drawStepSize == 1) {
-                        // 当前只有一个空步骤， undo 会从无到有
-                        changed |= true;
+                        // 当前只有一个空步骤， undo 取决于新步骤是否也是空步骤
+                        changed |= !isNewEmptyDrawStep;
                     }
                     mDrawSteps.set(drawStepSize - 1, drawStep);
                 } else {
+                    // 之前有非空步骤，不管新步骤是否是空步骤，undo 都不会产生变化. (总是可以 undo)
                     mDrawSteps.add(drawStep);
                 }
                 return changed;
@@ -1106,6 +1103,10 @@ public class DoodleView extends FrameLayout {
 
     /**
      * 绘画手势
+     *
+     * @see CancelGestureAction
+     * @see SinglePointGestureAction
+     * @see ScrollGestureAction
      */
     public interface GestureAction {
     }
@@ -1113,13 +1114,13 @@ public class DoodleView extends FrameLayout {
     /**
      * 手势取消，开启一个新的手势或者标记上一个手势完结
      */
-    public static class CancelGestureAction implements GestureAction {
+    public static final class CancelGestureAction implements GestureAction {
     }
 
     /**
      * 单指点击
      */
-    public static class SinglePointGestureAction implements GestureAction {
+    public static final class SinglePointGestureAction implements GestureAction {
         public final MotionEvent event;
 
         public SinglePointGestureAction(MotionEvent event) {
@@ -1130,7 +1131,7 @@ public class DoodleView extends FrameLayout {
     /**
      * 单指移动
      */
-    public static class ScrollGestureAction implements GestureAction {
+    public static final class ScrollGestureAction implements GestureAction {
         public final MotionEvent downEvent;
         public final MotionEvent currentEvent;
 
@@ -1141,166 +1142,9 @@ public class DoodleView extends FrameLayout {
     }
 
     /**
-     * 画刷
-     */
-    public static class Brush {
-
-        /**
-         * 铅笔
-         */
-        public final static int TYPE_PENCIL = 1;
-
-        public final int color; // 画刷的颜色 ARGB
-        public final int size; // 画刷的大小
-        public final int alpha; // 画刷的透明度 [0, 255]
-        public final int type; // 画刷的类型
-
-        public Brush(int color, int size, int alpha, int type) {
-            this.color = color;
-            this.size = size;
-            this.alpha = alpha;
-            this.type = type;
-        }
-
-        public static Brush createPencil(int color, int size, int alpha) {
-            return new Brush(color, size, alpha, TYPE_PENCIL);
-        }
-
-        public static void mustPencil(Brush brush) {
-            if (brush == null || brush.type != TYPE_PENCIL) {
-                throw new BrushNotSupportException(brush);
-            }
-        }
-
-        /**
-         * 根据当前画刷配置创建画笔
-         */
-        protected Paint createPaint() {
-            Paint paint = new Paint();
-            paint.setColor(color);
-            paint.setAlpha(alpha);
-            paint.setStrokeWidth(size);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeJoin(Paint.Join.ROUND);
-            paint.setStrokeCap(Paint.Cap.ROUND); // 笔刷样式 圆形
-            paint.setDither(true); // 图像抖动处理 使图像更清晰
-            paint.setAntiAlias(true); // 抗锯齿
-            return paint;
-        }
-
-    }
-
-    public static class BrushNotSupportException extends RuntimeException {
-        private final Brush mBrush;
-
-        public BrushNotSupportException(Brush brush) {
-            super("不支持的画刷 " + brush);
-            mBrush = brush;
-        }
-
-        public Brush getBrush() {
-            return mBrush;
-        }
-    }
-
-    /**
-     * 绘画步骤
-     */
-    public static class DrawStep {
-
-        private String TAG = "DrawStep#" + getClass().getSimpleName();
-        protected final Brush mDrawBrush;
-        protected final Paint mDrawPaint;
-
-        public DrawStep(Brush drawBrush) {
-            mDrawBrush = drawBrush;
-            if (mDrawBrush != null) {
-                mDrawPaint = mDrawBrush.createPaint();
-            } else {
-                mDrawPaint = null;
-            }
-        }
-
-        @CallSuper
-        public void onDraw(@NonNull Canvas canvas) {
-            CommonLog.d(TAG + " onDraw");
-        }
-
-        /**
-         * 当前的绘画步骤是否继续消费该绘画手势，如果继续消费返回 true, 否则返回 false.
-         */
-        public boolean dispatchGestureAction(GestureAction gestureAction, Brush brush) {
-            if (mDrawBrush != brush) {
-                // 画笔变更，开始新的绘画步骤
-                return false;
-            }
-            if (gestureAction == null || brush == null) {
-                return false;
-            }
-            return onGestureAction(gestureAction);
-        }
-
-        /**
-         * 当前的绘画步骤是否继续消费该绘画手势，如果继续消费返回 true, 否则返回 false.
-         */
-        protected boolean onGestureAction(@NonNull GestureAction gestureAction) {
-            return false;
-        }
-
-        public static DrawStep create(GestureAction gestureAction, Brush brush) {
-            if (gestureAction == null
-                    || gestureAction instanceof CancelGestureAction
-                    || brush == null) {
-                return new EmptyDrawStep(brush);
-            }
-
-            if (gestureAction instanceof SinglePointGestureAction) {
-                SinglePointGestureAction singlePointGestureAction = (SinglePointGestureAction) gestureAction;
-                if (brush.type == Brush.TYPE_PENCIL) {
-                    return new PointDrawStep(brush, singlePointGestureAction.event.getX(), singlePointGestureAction.event.getY());
-                }
-            }
-
-            if (gestureAction instanceof ScrollGestureAction) {
-                ScrollGestureAction scrollGestureAction = (ScrollGestureAction) gestureAction;
-                if (brush.type == Brush.TYPE_PENCIL) {
-                    return new ScribbleDrawStep(brush,
-                            scrollGestureAction.downEvent.getX(),
-                            scrollGestureAction.downEvent.getY(),
-                            scrollGestureAction.currentEvent.getX(),
-                            scrollGestureAction.currentEvent.getY());
-                }
-            }
-
-            // 其他绘画待扩展
-
-            return new EmptyDrawStep(brush);
-        }
-    }
-
-    /**
-     * 空的绘画步骤
-     */
-    public final static class EmptyDrawStep extends DrawStep {
-
-        public EmptyDrawStep(Brush drawBrush) {
-            super(drawBrush);
-        }
-
-        @Override
-        protected boolean onGestureAction(GestureAction gestureAction) {
-            if (gestureAction instanceof CancelGestureAction) {
-                return true;
-            }
-            return false;
-        }
-
-    }
-
-    /**
      * 帧图像, 画一张图
      */
-    public static class FrameDrawStep extends DrawStep {
+    private static class FrameDrawStep extends DrawStep {
         private final int mDrawStepIndex; // 该帧对应的 draw step index, 绘画步骤从 0 开始
         private final Bitmap mBitmap; // 从0到该 draw step index (包含) 所有绘画步骤完成之后的图像
 
@@ -1312,91 +1156,8 @@ public class DoodleView extends FrameLayout {
 
         @Override
         public void onDraw(@NonNull Canvas canvas) {
-            super.onDraw(canvas);
             canvas.drawBitmap(mBitmap, 0f, 0f, null);
         }
-    }
-
-    /**
-     * 画点
-     */
-    public static class PointDrawStep extends DrawStep {
-
-        private final float mX;
-        private final float mY;
-
-        public PointDrawStep(Brush drawBrush, float x, float y) {
-            super(drawBrush);
-            Brush.mustPencil(drawBrush);
-
-            mX = x;
-            mY = y;
-        }
-
-        @Override
-        public void onDraw(@NonNull Canvas canvas) {
-            super.onDraw(canvas);
-            canvas.drawPoint(mX, mY, mDrawPaint);
-        }
-    }
-
-    /**
-     * 自由绘制
-     */
-    public static class ScribbleDrawStep extends DrawStep {
-
-        private static final String TAG = "ScribbleDrawStep";
-        private final Path mPath;
-        private float mPreX;
-        private float mPreY;
-
-        public ScribbleDrawStep(Brush drawBrush, float startX, float startY, float moveX, float moveY) {
-            super(drawBrush);
-            Brush.mustPencil(drawBrush);
-
-            mPath = new Path();
-            mPath.moveTo(startX, startY);
-            mPreX = startX;
-            mPreY = startY;
-            toPoint(moveX, moveY);
-        }
-
-        /**
-         * 绘画平滑曲线
-         */
-        private void toPoint(float x, float y) {
-            // 使用贝塞尔去绘制，线条更平滑
-            mPath.quadTo(mPreX, mPreY, (mPreX + x) / 2, (mPreY + y) / 2);
-            mPreX = x;
-            mPreY = y;
-        }
-
-        @Override
-        protected boolean onGestureAction(@NonNull GestureAction gestureAction) {
-            if (!(gestureAction instanceof ScrollGestureAction)) {
-                return false;
-            }
-
-            ScrollGestureAction scrollGestureAction = (ScrollGestureAction) gestureAction;
-
-            int historySize = scrollGestureAction.currentEvent.getHistorySize();
-            CommonLog.d(TAG + " history size: " + historySize);
-            for (int i = 0; i < historySize; i++) {
-                toPoint(scrollGestureAction.currentEvent.getHistoricalX(i),
-                        scrollGestureAction.currentEvent.getHistoricalY(i));
-            }
-
-            toPoint(scrollGestureAction.currentEvent.getX(),
-                    scrollGestureAction.currentEvent.getY());
-            return true;
-        }
-
-        @Override
-        public void onDraw(@NonNull Canvas canvas) {
-            super.onDraw(canvas);
-            canvas.drawPath(mPath, mDrawPaint);
-        }
-
     }
 
 }

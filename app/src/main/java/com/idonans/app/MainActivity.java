@@ -9,6 +9,8 @@ import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleView;
+import com.idonans.doodle.brush.Brush;
+import com.idonans.doodle.brush.Pencil;
 
 public class MainActivity extends CommonActivity implements BrushSettingFragment.BrushSettingListener {
 
@@ -25,7 +27,7 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         setContentView(R.layout.main_activity);
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(Color.BLACK, 50, 255));
+        mDoodleView.setBrush(new Pencil(Color.BLACK, 50, 255));
 
         mDoodleActionPanel = ViewUtil.findViewByID(this, R.id.doodle_action_panel);
         mUndo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.undo);
@@ -96,25 +98,25 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
 
     @Override
     public void setBrushColor(int color) {
-        DoodleView.Brush brush = mDoodleView.getBrush();
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(color, brush.size, brush.alpha));
+        Brush brush = mDoodleView.getBrush();
+        mDoodleView.setBrush(brush.cloneWithColor(color));
     }
 
     @Override
     public void setBrushAlpha(int alpha) {
-        DoodleView.Brush brush = mDoodleView.getBrush();
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(brush.color, brush.size, alpha));
+        Brush brush = mDoodleView.getBrush();
+        mDoodleView.setBrush(brush.cloneWithAlpha(alpha));
+    }
+
+    @Override
+    public void setBrushSize(int size) {
+        Brush brush = mDoodleView.getBrush();
+        mDoodleView.setBrush(brush.cloneWithSize(size));
     }
 
     @Override
     public void setBrushType(int type) {
         // TODO
-    }
-
-    @Override
-    public void setBrushSize(int size) {
-        DoodleView.Brush brush = mDoodleView.getBrush();
-        mDoodleView.setBrush(DoodleView.Brush.createPencil(brush.color, size, brush.alpha));
     }
 
 }
