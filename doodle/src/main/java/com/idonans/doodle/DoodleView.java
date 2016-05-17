@@ -8,7 +8,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
 import android.support.annotation.CallSuper;
@@ -372,10 +371,8 @@ public class DoodleView extends FrameLayout {
 
         private class CanvasScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
 
-            private static final String TAG = "Render$CanvasScaleGestureListener";
-
-            private float mPx = -1;
-            private float mPy = -1;
+            private float mPx;
+            private float mPy;
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
@@ -384,39 +381,23 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                if (mPx < 0 || mPy < 0) {
-                    CommonLog.d(TAG + " px or py invalid [" + mPx + ", " + mPy + "]");
-                    return false;
-                }
-
                 Matrix matrix = canvasBuffer.getMatrix();
                 float[] values = new float[9];
                 matrix.getValues(values);
-
-                float oldScale = values[Matrix.MSCALE_X];
                 float scaleFactor = detector.getScaleFactor();
-                float targetScale = oldScale * scaleFactor;
 
-                if (targetScale >= oldScale && oldScale >= CanvasBuffer.MAX_SCALE) {
-                    // 已经最大，不需要再放大
-                    // 需要返回 true, 后续可能有缩小手势
-                    return true;
+                if (scaleFactor > 1f) {
+                    // 如果还可以放大，再放大
+                    if (values[Matrix.MSCALE_X] < CanvasBuffer.MAX_SCALE) {
+                        matrix.postScale(scaleFactor, scaleFactor, mPx, mPy);
+                    }
+                } else if (scaleFactor < 1f) {
+                    // 如果还可以缩小，再缩小
+                    if (values[Matrix.MSCALE_X] > CanvasBuffer.MIN_SCALE) {
+                        matrix.postScale(scaleFactor, scaleFactor, mPx, mPy);
+                    }
                 }
 
-                if (targetScale <= oldScale && oldScale <= CanvasBuffer.MIN_SCALE) {
-                    // 已经最小，不需要再缩小
-                    // 需要返回 true, 后续可能有放大手势
-                    return true;
-                }
-
-                if (targetScale > CanvasBuffer.MAX_SCALE) {
-                    scaleFactor = CanvasBuffer.MAX_SCALE / oldScale;
-                }
-                if (targetScale < CanvasBuffer.MIN_SCALE) {
-                    scaleFactor = CanvasBuffer.MIN_SCALE / oldScale;
-                }
-
-                matrix.postScale(scaleFactor, scaleFactor, mPx, mPy);
                 canvasBuffer.setMatrix(matrix);
                 return true;
             }
@@ -432,39 +413,21 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                int bufferWidth = canvasBuffer.getBufferWidth();
-                int bufferHeight = canvasBuffer.getBufferHeight();
-
+                // 缩放的变化比例使用外层 touch 点计算，但是缩放的锚点需要映射到 texture 的内容上
                 long eventTime = detector.getEventTime();
                 MotionEvent motionEvent = MotionEvent.obtain(eventTime, eventTime, MotionEvent.ACTION_DOWN, detector.getFocusX(), detector.getFocusY(), 0);
                 motionEvent.transform(canvasBuffer.getMatrixInvert());
                 float x = motionEvent.getX();
                 float y = motionEvent.getY();
-                boolean canScale = new RectF(0, 0, bufferWidth, bufferHeight).contains(x, y);
 
-                CommonLog.d(TAG + " onScaleBegin [" + detector.getFocusX() + ", " + detector.getFocusY() + "] -> [" + x + ", " + y + "], buffer size[" + bufferWidth + ", " + bufferHeight + "], " + canScale);
-
-                if (canScale) {
-                    mPx = x;
-                    mPy = y;
-                } else {
-                    mPx = -1;
-                    mPy = -1;
-                }
-                return canScale;
-            }
-
-            @Override
-            public void onScaleEnd(ScaleGestureDetector detector) {
-                mPx = -1;
-                mPy = -1;
+                mPx = x;
+                mPy = y;
+                return true;
             }
 
         }
 
         private class CanvasTranslationGestureListener implements GestureDetector.OnGestureListener {
-
-            private static final String TAG = "Render$CanvasTranslationGestureListener";
 
             @Override
             public boolean onDown(MotionEvent e) {
@@ -492,36 +455,8 @@ public class DoodleView extends FrameLayout {
                 }
 
                 // 多指移动画布
+                // 移动的距离仍然使用外层 touch 点计算，使得移动画布效果明显。
                 Matrix matrix = canvasBuffer.getMatrix();
-                float[] values = new float[9];
-                matrix.getValues(values);
-                float oldX = values[Matrix.MTRANS_X];
-                float oldY = values[Matrix.MTRANS_Y];
-
-                float targetX = oldX - distanceX;
-                float targetY = oldY - distanceY;
-
-                CommonLog.d(TAG + " matrix translate [" + oldX + ", " + oldY + "] ([" + distanceX + ", " + distanceY + "]) -> [" + targetX + ", " + targetY + "]");
-
-                // 限制移动边界
-                float pointXMax = (canvasBuffer.getBufferWidth() - canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE) / 2;
-                float pointYMax = (canvasBuffer.getBufferHeight() - canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE) / 2;
-                if (targetX > pointXMax) {
-                    distanceX = oldX - pointXMax;
-                }
-                if (targetY > pointYMax) {
-                    distanceY = oldY - pointYMax;
-                }
-                float scale = values[Matrix.MSCALE_X];
-                float pointXMin = -canvasBuffer.getBufferWidth() * scale + canvasBuffer.getBufferWidth() * CanvasBuffer.MIN_SCALE + pointXMax;
-                float pointYMin = -canvasBuffer.getBufferHeight() * scale + canvasBuffer.getBufferHeight() * CanvasBuffer.MIN_SCALE + pointYMax;
-                if (targetX < pointXMin) {
-                    distanceX = oldX - pointXMin;
-                }
-                if (targetY < pointYMin) {
-                    distanceY = oldY - pointYMin;
-                }
-
                 matrix.postTranslate(-distanceX, -distanceY);
                 canvasBuffer.setMatrix(matrix);
                 return true;
@@ -916,6 +851,52 @@ public class DoodleView extends FrameLayout {
             }
 
             public void setMatrix(Matrix matrix) {
+
+                // 需要约束变换范围, 先处理 scale, 再处理 translation
+                float[] values = new float[9];
+
+                matrix.getValues(values);
+                float scale = values[Matrix.MSCALE_X];
+                boolean changed = false;
+                if (scale > MAX_SCALE) {
+                    float scaleFactorAdjust = MAX_SCALE / scale;
+                    matrix.postScale(scaleFactorAdjust, scaleFactorAdjust, values[Matrix.MTRANS_X], values[Matrix.MTRANS_Y]);
+                    changed = true;
+                } else if (scale < MIN_SCALE) {
+                    float scaleFactorAdjust = MIN_SCALE / scale;
+                    matrix.postScale(scaleFactorAdjust, scaleFactorAdjust, values[Matrix.MTRANS_X], values[Matrix.MTRANS_Y]);
+                    changed = true;
+                }
+
+                // 如果 scale 被调整，则重新获取
+                if (changed) {
+                    matrix.getValues(values);
+                    scale = values[Matrix.MSCALE_X];
+                }
+                float translationX = values[Matrix.MTRANS_X];
+                float translationY = values[Matrix.MTRANS_Y];
+                float translationXMax = mTextureWidth / 2f;
+                float translationYMax = mTextureHeight / 2f;
+                float translationXMin = translationXMax - mBitmapWidth * scale;
+                float translationYMin = translationYMax - mBitmapHeight * scale;
+
+                float translationXAdjust = 0;
+                float translationYAdjust = 0;
+                if (translationX > translationXMax) {
+                    translationXAdjust = translationXMax - translationX;
+                } else if (translationX < translationXMin) {
+                    translationXAdjust = translationXMin - translationX;
+                }
+                if (translationY > translationYMax) {
+                    translationYAdjust = translationYMax - translationY;
+                } else if (translationY < translationYMin) {
+                    translationYAdjust = translationYMin - translationY;
+                }
+                if (translationXAdjust != 0 || translationYAdjust != 0) {
+                    // 移动范围越界，需要调整
+                    matrix.postTranslate(translationXAdjust, translationYAdjust);
+                }
+
                 debugMatrix(matrix);
 
                 mTextureView.setTransform(matrix);
