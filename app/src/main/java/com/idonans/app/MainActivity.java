@@ -66,7 +66,7 @@ public class MainActivity extends CommonActivity {
         mSetBrush.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showSetBrushDialog();
+                showBrushSetting();
             }
         });
     }
@@ -92,10 +92,10 @@ public class MainActivity extends CommonActivity {
         });
     }
 
-    private void showSetBrushDialog() {
+    private void showBrushSetting() {
         getSupportFragmentManager()
                 .beginTransaction()
-                .add(android.R.id.content, new SetBrushFragment())
+                .add(R.id.content_panel, new SetBrushFragment())
                 .addToBackStack(null)
                 .commit();
     }
