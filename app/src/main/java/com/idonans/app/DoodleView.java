@@ -1,4 +1,4 @@
-package com.idonans.doodle;
+package com.idonans.app;
 
 import android.annotation.TargetApi;
 import android.content.Context;

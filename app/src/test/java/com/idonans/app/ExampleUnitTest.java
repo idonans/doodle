@@ -1,4 +1,4 @@
-package com.idonans.doodle;
+package com.idonans.app;
 
 import org.junit.Test;
 

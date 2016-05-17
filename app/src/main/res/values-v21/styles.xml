@@ -1,0 +1,6 @@
+<resources>
+
+    <style name="BaseAppTheme.AppCompat">
+        <item name="android:statusBarColor">@color/material_grey_900</item>
+    </style>
+</resources>
