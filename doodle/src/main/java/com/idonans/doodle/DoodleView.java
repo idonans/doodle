@@ -799,6 +799,11 @@ public class DoodleView extends FrameLayout {
 
                 mMatrixTmp = new Matrix();
                 mMatrixInvertTmp = new Matrix();
+
+                // 调整图像位置，使得 bitmap 居中
+                Matrix matrix = getMatrix();
+                matrix.postTranslate((mTextureWidth - mBitmapWidth) / 2f, (mTextureHeight - mBitmapHeight) / 2f);
+                setMatrix(matrix);
             }
 
             public String toShortString() {
