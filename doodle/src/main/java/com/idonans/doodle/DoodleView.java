@@ -556,7 +556,7 @@ public class DoodleView extends FrameLayout {
                 enqueueGestureAction(new ScrollGestureAction(downEvent, currentEvent));
 
                 // 在快速滑动时，需要避排队过多的手势事件，适当让事件等待绘画渲染完成，在下一次 scroll 中，可以从 history 中找回期间触发过的所有点。
-                Threads.sleepQuietly(canvasBuffer.getLastDrawingTime());
+                Threads.sleepQuietly(Math.max(5L, canvasBuffer.getLastDrawingTime()));
 
                 return true;
             }
