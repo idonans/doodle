@@ -8,8 +8,8 @@ android {
         applicationId "com.idonans.app"
         minSdkVersion 16
         targetSdkVersion 23
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "0.1.1"
     }
     buildTypes {
         release {
@@ -22,7 +22,5 @@ android {
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:23.3.0'
-    compile 'com.idonans.acommon:acommon:0.1.6'
     compile project(':doodle')
 }
