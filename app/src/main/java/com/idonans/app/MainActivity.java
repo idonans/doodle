@@ -10,7 +10,7 @@ import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleView;
 import com.idonans.doodle.brush.Brush;
-import com.idonans.doodle.brush.Pencil;
+import com.idonans.doodle.brush.LeavesPencil;
 
 public class MainActivity extends CommonActivity implements BrushSettingFragment.BrushSettingListener {
 
@@ -27,7 +27,7 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         setContentView(R.layout.main_activity);
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
-        mDoodleView.setBrush(new Pencil(Color.BLACK, 50, 255));
+        mDoodleView.setBrush(new LeavesPencil(Color.BLACK, 50, 255));
 
         mDoodleActionPanel = ViewUtil.findViewByID(this, R.id.doodle_action_panel);
         mUndo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.undo);
