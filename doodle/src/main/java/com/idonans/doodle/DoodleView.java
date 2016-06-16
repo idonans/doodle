@@ -575,7 +575,7 @@ public class DoodleView extends FrameLayout {
                 forceRestoreToState(renderSavedState, canvasBufferSavedState);
                 mPendingRenderSavedState = null;
                 mPendingCanvasBufferSavedState = null;
-                postInvalidate();
+                resumeDoodle();
             }
         }
 
@@ -702,6 +702,7 @@ public class DoodleView extends FrameLayout {
             if (isAvailable()) {
                 canvasBuffer.postInvalidate();
                 postInvalidate();
+                canvasBuffer.notifyUndoRedoChanged();
             }
         }
 
