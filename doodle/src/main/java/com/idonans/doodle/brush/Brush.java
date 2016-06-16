@@ -1,6 +1,8 @@
 package com.idonans.doodle.brush;
 
 import android.graphics.Paint;
+import android.os.Parcel;
+import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -9,8 +11,10 @@ import com.idonans.doodle.drawstep.DrawStep;
 import com.idonans.doodle.drawstep.EmptyDrawStep;
 
 /**
- * 画刷
+ * 画刷 子类必须要重写 Brush#Parcel 构造函数 和 #writeToParcel 方法
  * Created by idonans on 16-5-17.
+ * @see #Brush(Parcel)
+ * @see #writeToParcel(Parcel)
  */
 public abstract class Brush {
 
@@ -28,6 +32,25 @@ public abstract class Brush {
      * 画刷的透明度 [0, 255], 值越大越不透明
      */
     public final int alpha;
+
+    /**
+     * 子类需要重写此构造函数，并且提供同样的参数列表 在涂鸦板做数据的保存与恢复时会用到
+     */
+    public Brush(@NonNull Parcel in) {
+        this.color = in.readInt();
+        this.size = in.readInt();
+        this.alpha = in.readInt();
+    }
+
+    /**
+     * 子类需要重写此方法，并且提供同样的参数列表 在涂鸦板做数据的保存与恢复时会用到
+     */
+    @CallSuper
+    public void writeToParcel(@NonNull Parcel out) {
+        out.writeInt(this.color);
+        out.writeInt(this.size);
+        out.writeInt(this.alpha);
+    }
 
     public Brush(int color, int size, int alpha) {
         this.color = color;

@@ -8,11 +8,14 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
+import android.view.AbsSavedState;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -28,6 +31,7 @@ import com.idonans.doodle.brush.None;
 import com.idonans.doodle.drawstep.DrawStep;
 import com.idonans.doodle.drawstep.EmptyDrawStep;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
@@ -274,6 +278,152 @@ public class DoodleView extends FrameLayout {
                 }
             }
         });
+    }
+
+
+
+    public static class RenderSavedState extends AbsSavedState {
+
+        // 画布的宽高比
+        private int mAspectWidth = 1;
+        private int mAspectHeight = 1;
+
+        public RenderSavedState(Parcel source) {
+            super(source);
+            mAspectWidth = source.readInt();
+            mAspectHeight = source.readInt();
+        }
+
+        public RenderSavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            super.writeToParcel(out, flags);
+            out.writeInt(mAspectWidth);
+            out.writeInt(mAspectHeight);
+        }
+
+        public static final Parcelable.Creator<RenderSavedState> CREATOR =
+                new Parcelable.Creator<RenderSavedState>() {
+                    public RenderSavedState createFromParcel(Parcel in) {
+                        return new RenderSavedState(in);
+                    }
+
+                    public RenderSavedState[] newArray(int size) {
+                        return new RenderSavedState[size];
+                    }
+                };
+    }
+
+    public static class CanvasBufferSavedState extends AbsSavedState {
+
+        private ArrayList<DrawStep> mDrawSteps;
+        private ArrayList<DrawStep> mDrawStepsRedo;
+
+        private int mTextureWidth;
+        private int mTextureHeight;
+
+        private int mBitmapWidth; // 当前画布图像宽度
+        private int mBitmapHeight; // 当前画布图像高度
+
+        public CanvasBufferSavedState(Parcel in) {
+            super(in);
+            mTextureWidth = in.readInt();
+            mTextureHeight = in.readInt();
+            mBitmapWidth = in.readInt();
+            mBitmapHeight = in.readInt();
+
+            // DrawStep 需要提供一个 public 并且以 Parcel 为唯一参数的构造函数
+
+            {
+                // 恢复 mDrawSteps 中的数据
+                int drawStepsSize = in.readInt();
+                mDrawSteps = new ArrayList<>(drawStepsSize);
+                for (int i = 0; i < drawStepsSize; i++) {
+                    String clazz = in.readString();
+                    try {
+                        Constructor c = Class.forName(clazz).getConstructor(Parcel.class);
+                        DrawStep drawStep = (DrawStep) c.newInstance(in);
+                        mDrawSteps.add(drawStep);
+                    } catch (Exception e) {
+                        throw new RuntimeException("error to restore draw steps");
+                    }
+                }
+            }
+
+            {
+                // 恢复 mDrawStepsRedo 中的数据
+                int drawStepsRedoSize = in.readInt();
+                mDrawStepsRedo = new ArrayList<>(drawStepsRedoSize);
+                for (int i = 0; i < drawStepsRedoSize; i++) {
+                    String clazz = in.readString();
+                    try {
+                        Constructor c = Class.forName(clazz).getConstructor(Parcel.class);
+                        DrawStep drawStep = (DrawStep) c.newInstance(in);
+                        mDrawStepsRedo.add(drawStep);
+                    } catch (Exception e) {
+                        throw new RuntimeException("error to restore draw steps redo");
+                    }
+                }
+            }
+
+        }
+
+        public CanvasBufferSavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            super.writeToParcel(out, flags);
+            out.writeInt(mTextureWidth);
+            out.writeInt(mTextureHeight);
+            out.writeInt(mBitmapWidth);
+            out.writeInt(mBitmapHeight);
+
+            // DrawStep 需要提供一个 public 并且以 Parcel 为唯一参数的构造函数
+
+            {
+                // 记录 mDrawSteps 中的数据
+                int drawStepsSize = 0;
+                if (mDrawSteps != null) {
+                    drawStepsSize = mDrawSteps.size();
+                }
+                out.writeInt(drawStepsSize);
+                for (int i = 0; i < drawStepsSize; i++) {
+                    DrawStep drawStep = mDrawSteps.get(i);
+                    out.writeString(drawStep.getClass().getName());
+                    drawStep.writeToParcel(out);
+                }
+            }
+
+            {
+                // 记录 mDrawStepsRedo 中的数据
+                int drawStepsRedoSize = 0;
+                if (mDrawStepsRedo != null) {
+                    drawStepsRedoSize = mDrawStepsRedo.size();
+                }
+                out.writeInt(drawStepsRedoSize);
+                for (int i = 0; i < drawStepsRedoSize; i++) {
+                    DrawStep drawStep = mDrawStepsRedo.get(i);
+                    out.writeString(drawStep.getClass().getName());
+                    drawStep.writeToParcel(out);
+                }
+            }
+        }
+
+        public static final Parcelable.Creator<CanvasBufferSavedState> CREATOR =
+                new Parcelable.Creator<CanvasBufferSavedState>() {
+                    public CanvasBufferSavedState createFromParcel(Parcel in) {
+                        return new CanvasBufferSavedState(in);
+                    }
+
+                    public CanvasBufferSavedState[] newArray(int size) {
+                        return new CanvasBufferSavedState[size];
+                    }
+                };
     }
 
     private class Render implements Available {
@@ -1144,12 +1294,12 @@ public class DoodleView extends FrameLayout {
     /**
      * 帧图像, 画一张图
      */
-    private static class FrameDrawStep extends DrawStep {
+    private static final class FrameDrawStep extends DrawStep {
         private final int mDrawStepIndex; // 该帧对应的 draw step index, 绘画步骤从 0 开始
         private final Bitmap mBitmap; // 从0到该 draw step index (包含) 所有绘画步骤完成之后的图像
 
         public FrameDrawStep(int drawStepIndex, Bitmap bitmap) {
-            super(null);
+            super((Brush)null);
             mDrawStepIndex = drawStepIndex;
             mBitmap = bitmap;
         }
