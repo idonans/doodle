@@ -428,12 +428,15 @@ public class DoodleView extends FrameLayout {
         private int mBitmapWidth; // 当前画布图像宽度
         private int mBitmapHeight; // 当前画布图像高度
 
+        private float[] mMatrixValues = new float[9];
+
         public CanvasBufferSavedState(Parcel in) {
             super(in);
             mTextureWidth = in.readInt();
             mTextureHeight = in.readInt();
             mBitmapWidth = in.readInt();
             mBitmapHeight = in.readInt();
+            in.readFloatArray(mMatrixValues);
 
             // DrawStep 需要提供一个 public 并且以 Parcel 为唯一参数的构造函数
 
@@ -482,6 +485,7 @@ public class DoodleView extends FrameLayout {
             out.writeInt(mTextureHeight);
             out.writeInt(mBitmapWidth);
             out.writeInt(mBitmapHeight);
+            out.writeFloatArray(mMatrixValues);
 
             // DrawStep 需要提供一个 public 并且以 Parcel 为唯一参数的构造函数
 
@@ -608,6 +612,10 @@ public class DoodleView extends FrameLayout {
                 if (canvasBufferSavedState.mDrawStepsRedo != null) {
                     mCanvasBuffer.mDrawStepsRedo.addAll(canvasBufferSavedState.mDrawStepsRedo);
                 }
+
+                Matrix matrix = mCanvasBuffer.getMatrix();
+                matrix.setValues(canvasBufferSavedState.mMatrixValues);
+                mCanvasBuffer.setMatrix(matrix);
             }
         }
 
@@ -623,6 +631,7 @@ public class DoodleView extends FrameLayout {
             canvasBufferSavedState.mBitmapHeight = canvasBuffer.mBitmapHeight;
             canvasBufferSavedState.mTextureWidth = canvasBuffer.mTextureWidth;
             canvasBufferSavedState.mTextureHeight = canvasBuffer.mTextureHeight;
+            canvasBuffer.getMatrix().getValues(canvasBufferSavedState.mMatrixValues);
             return canvasBufferSavedState;
         }
 
