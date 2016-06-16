@@ -56,9 +56,11 @@ public class ScribbleDrawStep extends DrawStep {
         int pointSize = mAllPoints.size();
         out.writeInt(pointSize);
 
-        Object[] array = mAllPoints.toArray();
+        Float[] array = mAllPoints.toArray(new Float[pointSize]);
         float[] floatArray = new float[pointSize];
-        System.arraycopy(array, 0, floatArray, 0, pointSize);
+        for (int i = 0; i < pointSize; i++) {
+            floatArray[i] = array[i];
+        }
 
         out.writeFloatArray(floatArray);
     }
