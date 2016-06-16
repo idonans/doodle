@@ -29,7 +29,7 @@ public abstract class DrawStep {
             try {
                 mDrawBrush = (Brush) Class.forName(brushClass).getConstructor(Parcel.class).newInstance(in);
             } catch (Exception e) {
-                throw new RuntimeException("error to restore draw draw brush");
+                throw new RuntimeException("error to restore draw brush");
             }
         }
     }

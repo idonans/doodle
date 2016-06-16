@@ -280,7 +280,107 @@ public class DoodleView extends FrameLayout {
         });
     }
 
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        CommonLog.d(TAG + " onSaveInstanceState");
 
+        Parcelable superState = super.onSaveInstanceState();
+
+        SavedState ss = new SavedState(superState);
+        ss.mBrush = mBrush;
+
+        ss.mRenderSavedState = new RenderSavedState(AbsSavedState.EMPTY_STATE);
+        ss.mRenderSavedState.mAspectWidth = mRender.mAspectWidth;
+        ss.mRenderSavedState.mAspectHeight = mRender.mAspectHeight;
+
+        ss.mCanvasBufferSavedState = mRender.createCanvasBufferSavedState();
+
+        return ss;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        CommonLog.d(TAG + " onRestoreInstanceState");
+
+        if (!(state instanceof SavedState)) {
+            super.onRestoreInstanceState(state);
+            return;
+        }
+
+        SavedState ss = (SavedState)state;
+        super.onRestoreInstanceState(ss.getSuperState());
+
+        mBrush = ss.mBrush;
+        mRender.restore(ss.mRenderSavedState, ss.mCanvasBufferSavedState);
+    }
+
+    public static class SavedState extends BaseSavedState {
+
+        private Brush mBrush;
+        private CanvasBufferSavedState mCanvasBufferSavedState;
+        private RenderSavedState mRenderSavedState;
+
+        public SavedState(Parcel in) {
+            super(in);
+            String brushClass = in.readString();
+            if (brushClass == null) {
+                mBrush = null;
+            } else {
+                try {
+                    mBrush = (Brush) Class.forName(brushClass).getConstructor(Parcel.class).newInstance(in);
+                } catch (Exception e) {
+                    throw new RuntimeException("error to restore draw draw brush");
+                }
+            }
+            if (in.readInt() != 0) {
+                mCanvasBufferSavedState = CanvasBufferSavedState.CREATOR.createFromParcel(in);
+            }
+            if (in.readInt() != 0) {
+                mRenderSavedState = RenderSavedState.CREATOR.createFromParcel(in);
+            }
+        }
+
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            super.writeToParcel(out, flags);
+            if (mBrush == null) {
+                out.writeString(null);
+            } else {
+                out.writeString(mBrush.getClass().getName());
+                mBrush.writeToParcel(out);
+            }
+
+            if (mCanvasBufferSavedState == null) {
+                out.writeInt(0);
+            } else {
+                out.writeInt(1);
+                mCanvasBufferSavedState.writeToParcel(out, flags);
+            }
+
+            if (mRenderSavedState == null) {
+                out.writeInt(0);
+            } else {
+                out.writeInt(1);
+                mRenderSavedState.writeToParcel(out, flags);
+            }
+        }
+
+        public SavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        public static final Parcelable.Creator<SavedState> CREATOR =
+                new Parcelable.Creator<SavedState>() {
+                    public SavedState createFromParcel(Parcel in) {
+                        return new SavedState(in);
+                    }
+
+                    public SavedState[] newArray(int size) {
+                        return new SavedState[size];
+                    }
+                };
+
+    }
 
     public static class RenderSavedState extends AbsSavedState {
 
@@ -445,12 +545,84 @@ public class DoodleView extends FrameLayout {
         private final GestureDetectorCompat mCanvasTranslationGestureDetectorCompat;
         private final GestureDetectorCompat mTextureActionGestureDetectorCompat;
 
+        private boolean mHasPendingSavedState;
+        private RenderSavedState mPendingRenderSavedState;
+        private CanvasBufferSavedState mPendingCanvasBufferSavedState;
+
+
         private Render(Context context) {
             mCanvasScaleGestureDetector = new TwoPointScaleGestureDetector(context, new CanvasScaleGestureListener());
             mCanvasTranslationGestureDetectorCompat = new GestureDetectorCompat(context, new CanvasTranslationGestureListener());
             mCanvasTranslationGestureDetectorCompat.setIsLongpressEnabled(false);
             mTextureActionGestureDetectorCompat = new GestureDetectorCompat(context, new TextureActionGestureListener());
             mTextureActionGestureDetectorCompat.setIsLongpressEnabled(false);
+        }
+
+        /**
+         * 从历史中恢复当前画板的状态, 当前画板的 canvas 可能还没有初始化完成
+         */
+        private void restore(RenderSavedState renderSavedState, CanvasBufferSavedState canvasBufferSavedState) {
+            synchronized (mBufferLock) {
+                if (mCanvasBuffer == null) {
+                    // 画布还没有准备好，延迟恢复
+                    mHasPendingSavedState = true;
+                    mPendingRenderSavedState = renderSavedState;
+                    mPendingCanvasBufferSavedState = canvasBufferSavedState;
+                    return;
+                }
+
+                mHasPendingSavedState = false;
+                forceRestoreToState(renderSavedState, canvasBufferSavedState);
+                mPendingRenderSavedState = null;
+                mPendingCanvasBufferSavedState = null;
+            }
+        }
+
+        private void forceRestoreToState(RenderSavedState renderSavedState, CanvasBufferSavedState canvasBufferSavedState) {
+            synchronized (mBufferLock) {
+                if (renderSavedState == null) {
+                    return;
+                }
+
+                // canvas buffer 中没有需要恢复的内容，如果画布比例不同，则重新初始化
+                if (canvasBufferSavedState == null) {
+                    if (mAspectWidth != renderSavedState.mAspectWidth
+                            || mAspectHeight != renderSavedState.mAspectHeight) {
+                        DoodleView.this.setAspectRatio(renderSavedState.mAspectWidth, renderSavedState.mAspectHeight);
+                    }
+                    return;
+                }
+
+                // 恢复画布比例和缓存的 canvas buffer
+                mAspectWidth = renderSavedState.mAspectWidth;
+                mAspectHeight = renderSavedState.mAspectHeight;
+
+                mCanvasBuffer = new CanvasBuffer(canvasBufferSavedState.mTextureWidth,
+                        canvasBufferSavedState.mTextureHeight,
+                        canvasBufferSavedState.mBitmapWidth,
+                        canvasBufferSavedState.mBitmapHeight);
+                if (canvasBufferSavedState.mDrawSteps != null) {
+                    mCanvasBuffer.mDrawSteps.addAll(canvasBufferSavedState.mDrawSteps);
+                }
+                if (canvasBufferSavedState.mDrawStepsRedo != null) {
+                    mCanvasBuffer.mDrawStepsRedo.addAll(canvasBufferSavedState.mDrawStepsRedo);
+                }
+            }
+        }
+
+        private CanvasBufferSavedState createCanvasBufferSavedState() {
+            CanvasBuffer canvasBuffer = mCanvasBuffer;
+            if (canvasBuffer == null) {
+                return null;
+            }
+            CanvasBufferSavedState canvasBufferSavedState = new CanvasBufferSavedState(AbsSavedState.EMPTY_STATE);
+            canvasBufferSavedState.mDrawStepsRedo = canvasBuffer.mDrawStepsRedo;
+            canvasBufferSavedState.mDrawSteps = canvasBuffer.mDrawSteps;
+            canvasBufferSavedState.mBitmapWidth = canvasBuffer.mBitmapWidth;
+            canvasBufferSavedState.mBitmapHeight = canvasBuffer.mBitmapHeight;
+            canvasBufferSavedState.mTextureWidth = canvasBuffer.mTextureWidth;
+            canvasBufferSavedState.mTextureHeight = canvasBuffer.mTextureHeight;
+            return canvasBufferSavedState;
         }
 
         private class TwoPointScaleGestureDetector extends ScaleGestureDetector {
@@ -496,6 +668,15 @@ public class DoodleView extends FrameLayout {
                     if (mCanvasBuffer.mTextureWidth != width || mCanvasBuffer.mTextureHeight != height) {
                         CommonLog.e(TAG + " current canvas buffer texture size not match");
                     }
+                    return;
+                }
+
+                // 从历史恢复
+                if (mHasPendingSavedState) {
+                    mHasPendingSavedState = false;
+                    forceRestoreToState(mPendingRenderSavedState, mPendingCanvasBufferSavedState);
+                    mPendingRenderSavedState = null;
+                    mPendingCanvasBufferSavedState = null;
                     return;
                 }
 
