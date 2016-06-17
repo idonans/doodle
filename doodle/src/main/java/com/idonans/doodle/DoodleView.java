@@ -1394,6 +1394,17 @@ public class DoodleView extends FrameLayout {
              */
             private void appendFrame(FrameDrawStep frame) {
                 int currentFrameSize = mFrames.size();
+
+                if (currentFrameSize > 0) {
+                    // 校验最后一帧的位置必须比新增加这一帧靠前
+                    if (mFrames.get(currentFrameSize - 1).mDrawStepIndex >= frame.mDrawStepIndex) {
+                        throw new RuntimeException(
+                                "append frame error, index out of range. ["
+                                        +(mFrames.get(currentFrameSize - 1).mDrawStepIndex)
+                                        +", "+(frame.mDrawStepIndex)+"]");
+                    }
+                }
+
                 if (currentFrameSize >= FRAMES_SIZE_MAX) {
                     // 关键帧过多，删除第一个，依次向前移动，新的关键帧放到最后一个位置
                     for (int index = 0; index < currentFrameSize - 1; index++) {
