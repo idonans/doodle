@@ -289,10 +289,7 @@ public class DoodleView extends FrameLayout {
         SavedState ss = new SavedState(superState);
         ss.mBrush = mBrush;
 
-        ss.mRenderSavedState = new RenderSavedState(AbsSavedState.EMPTY_STATE);
-        ss.mRenderSavedState.mAspectWidth = mRender.mAspectWidth;
-        ss.mRenderSavedState.mAspectHeight = mRender.mAspectHeight;
-
+        ss.mRenderSavedState = mRender.createRenderSavedState();
         ss.mCanvasBufferSavedState = mRender.createCanvasBufferSavedState();
 
         return ss;
@@ -619,20 +616,31 @@ public class DoodleView extends FrameLayout {
             }
         }
 
-        private CanvasBufferSavedState createCanvasBufferSavedState() {
-            CanvasBuffer canvasBuffer = mCanvasBuffer;
-            if (canvasBuffer == null) {
-                return null;
+        private RenderSavedState createRenderSavedState() {
+            synchronized (mBufferLock) {
+                RenderSavedState renderSavedState = new RenderSavedState(AbsSavedState.EMPTY_STATE);
+                renderSavedState.mAspectWidth = this.mAspectWidth;
+                renderSavedState.mAspectHeight = this.mAspectHeight;
+                return renderSavedState;
             }
-            CanvasBufferSavedState canvasBufferSavedState = new CanvasBufferSavedState(AbsSavedState.EMPTY_STATE);
-            canvasBufferSavedState.mDrawStepsRedo = canvasBuffer.mDrawStepsRedo;
-            canvasBufferSavedState.mDrawSteps = canvasBuffer.mDrawSteps;
-            canvasBufferSavedState.mBitmapWidth = canvasBuffer.mBitmapWidth;
-            canvasBufferSavedState.mBitmapHeight = canvasBuffer.mBitmapHeight;
-            canvasBufferSavedState.mTextureWidth = canvasBuffer.mTextureWidth;
-            canvasBufferSavedState.mTextureHeight = canvasBuffer.mTextureHeight;
-            canvasBuffer.getMatrix().getValues(canvasBufferSavedState.mMatrixValues);
-            return canvasBufferSavedState;
+        }
+
+        private CanvasBufferSavedState createCanvasBufferSavedState() {
+            synchronized (mBufferLock) {
+                CanvasBuffer canvasBuffer = this.mCanvasBuffer;
+                if (canvasBuffer == null) {
+                    return null;
+                }
+                CanvasBufferSavedState canvasBufferSavedState = new CanvasBufferSavedState(AbsSavedState.EMPTY_STATE);
+                canvasBufferSavedState.mDrawStepsRedo = canvasBuffer.mDrawStepsRedo;
+                canvasBufferSavedState.mDrawSteps = canvasBuffer.mDrawSteps;
+                canvasBufferSavedState.mBitmapWidth = canvasBuffer.mBitmapWidth;
+                canvasBufferSavedState.mBitmapHeight = canvasBuffer.mBitmapHeight;
+                canvasBufferSavedState.mTextureWidth = canvasBuffer.mTextureWidth;
+                canvasBufferSavedState.mTextureHeight = canvasBuffer.mTextureHeight;
+                canvasBuffer.getMatrix().getValues(canvasBufferSavedState.mMatrixValues);
+                return canvasBufferSavedState;
+            }
         }
 
         private class TwoPointScaleGestureDetector extends ScaleGestureDetector {
