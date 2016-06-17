@@ -10,6 +10,7 @@ import android.graphics.SurfaceTexture;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
@@ -17,6 +18,7 @@ import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.view.AbsSavedState;
 import android.view.GestureDetector;
+import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.TextureView;
@@ -1441,15 +1443,21 @@ public class DoodleView extends FrameLayout {
          * DoodleView 上的触摸事件
          */
         public boolean onTouchEvent(MotionEvent event) {
+            boolean handle = true;
             if (!isAvailable()) {
-                return false;
+                // 通知 cancel
+                final long now = SystemClock.uptimeMillis();
+                event = MotionEvent.obtain(now, now,
+                        MotionEvent.ACTION_CANCEL, 0.0f, 0.0f, 0);
+                event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+                handle = false;
             }
 
             mCanvasScaleGestureDetector.onTouchEvent(event);
             mCanvasTranslationGestureDetectorCompat.onTouchEvent(event);
             mTextureActionGestureDetectorCompat.onTouchEvent(event);
 
-            return true;
+            return handle;
         }
 
     }
