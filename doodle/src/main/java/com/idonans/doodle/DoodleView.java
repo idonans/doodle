@@ -1494,8 +1494,10 @@ public class DoodleView extends FrameLayout {
             public boolean dispatchGestureAction(GestureAction gestureAction) {
                 // 标记 undo or redo 是否产生了变化
                 boolean changed = false;
-                // 开始新的动作，清空可能存在的 redo 内容
-                changed |= clearRedo();
+                // 开始新的动作，清空可能存在的 redo 内容, cancel 动作不清空 redo
+                if (!(gestureAction instanceof CancelGestureAction)) {
+                    changed |= clearRedo();
+                }
 
                 int drawStepSize = mDrawSteps.size();
                 if (drawStepSize <= 0) {
