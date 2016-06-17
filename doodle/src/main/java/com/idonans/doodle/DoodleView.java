@@ -1313,7 +1313,7 @@ public class DoodleView extends FrameLayout {
              * 恢复绘制缓冲区, 如果是恢复逻辑返回 true, 否则返回 false.
              */
             private boolean restoreBuffer() {
-                // 该涂鸦板从回收状态恢复或者从草稿中恢复的处理逻辑
+                // 该涂鸦板从回收状态恢复或者从草稿中恢复的处理逻辑, 或者当用户 undo 到所有的关键帧都消耗完时。
 
                 final int framesSize = mFrames.size();
                 final int drawStepSize = mDrawSteps.size();
