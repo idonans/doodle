@@ -582,6 +582,8 @@ public class DoodleView extends FrameLayout {
 
         private void forceRestoreToState(RenderSavedState renderSavedState, CanvasBufferSavedState canvasBufferSavedState) {
             synchronized (mBufferLock) {
+                mCanvasBuffer = null;
+
                 if (renderSavedState == null) {
                     return;
                 }
@@ -599,20 +601,21 @@ public class DoodleView extends FrameLayout {
                 mAspectWidth = renderSavedState.mAspectWidth;
                 mAspectHeight = renderSavedState.mAspectHeight;
 
-                mCanvasBuffer = new CanvasBuffer(canvasBufferSavedState.mTextureWidth,
+                CanvasBuffer canvasBuffer = new CanvasBuffer(canvasBufferSavedState.mTextureWidth,
                         canvasBufferSavedState.mTextureHeight,
                         canvasBufferSavedState.mBitmapWidth,
                         canvasBufferSavedState.mBitmapHeight);
                 if (canvasBufferSavedState.mDrawSteps != null) {
-                    mCanvasBuffer.mDrawSteps.addAll(canvasBufferSavedState.mDrawSteps);
+                    canvasBuffer.mDrawSteps.addAll(canvasBufferSavedState.mDrawSteps);
                 }
                 if (canvasBufferSavedState.mDrawStepsRedo != null) {
-                    mCanvasBuffer.mDrawStepsRedo.addAll(canvasBufferSavedState.mDrawStepsRedo);
+                    canvasBuffer.mDrawStepsRedo.addAll(canvasBufferSavedState.mDrawStepsRedo);
                 }
 
-                Matrix matrix = mCanvasBuffer.getMatrix();
+                Matrix matrix = canvasBuffer.getMatrix();
                 matrix.setValues(canvasBufferSavedState.mMatrixValues);
-                mCanvasBuffer.setMatrix(matrix);
+                canvasBuffer.setMatrix(matrix);
+                mCanvasBuffer = canvasBuffer;
             }
         }
 
