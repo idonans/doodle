@@ -1303,8 +1303,106 @@ public class DoodleView extends FrameLayout {
 
             public void draw(Canvas canvas) {
                 CommonLog.d(TAG + " draw");
-                refreshBuffer();
+                if (!restoreBuffer()) {
+                    refreshBuffer();
+                }
                 canvas.drawBitmap(mBitmap, 0f, 0f, null);
+            }
+
+            /**
+             * 恢复绘制缓冲区, 如果是恢复逻辑返回 true, 否则返回 false.
+             */
+            private boolean restoreBuffer() {
+                // 该涂鸦板从回收状态恢复或者从草稿中恢复的处理逻辑
+
+                final int framesSize = mFrames.size();
+                final int drawStepSize = mDrawSteps.size();
+
+                if (framesSize > 0) {
+                    // 存在历史关键帧，不是恢复逻辑
+                    return false;
+                }
+
+                if (drawStepSize < FRAMES_STEP_INTERVAL_MAX || drawStepSize < 2) {
+                    // 如果当前没有历史关键帧，并且绘画步骤数量不足构建一个关键帧的长度，则认为不是恢复逻辑
+                    return false;
+                }
+
+                CommonLog.d(TAG + " restore frame");
+
+                // 绘画所有步骤，并且恢复所有关键帧
+                // 清空背景
+                mBitmapCanvas.drawColor(Color.WHITE);
+
+                // 参与关键帧绘画的步骤数量, 最后的这些步骤需要处理关键帧的绘制和保存
+                final int stepSizeInFrames = Math.min(drawStepSize, FRAMES_SIZE_MAX * FRAMES_STEP_INTERVAL_MAX);
+
+                // 关键帧中第一帧的 index (总是不小于0)
+                final int firstStepIndexInFrames = drawStepSize - stepSizeInFrames;
+                // 绘制第一个关键帧之前的所有步骤
+                for (int i = 0; i < firstStepIndexInFrames; i++) {
+                    mDrawSteps.get(i).onDraw(mBitmapCanvas);
+                }
+                // 绘制除最后一个绘画步骤外余下的步骤，并且按照间隔存储关键帧
+                for (int i = firstStepIndexInFrames; i < drawStepSize - 1; i++) {
+                    mDrawSteps.get(i).onDraw(mBitmapCanvas);
+                    // 将当前的图像存储为一个关键帧
+                    Bitmap bitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
+                    new Canvas(bitmap).drawBitmap(mBitmap, 0f, 0f, null);
+                    FrameDrawStep frame = new FrameDrawStep(i, bitmap);
+                    appendFrame(frame);
+
+                    // 绘画该帧之后的 FRAMES_STEP_INTERVAL_MAX - 1 个绘画步骤
+                    for (int j = 0; j < FRAMES_STEP_INTERVAL_MAX; j++) {
+                        i++;
+                        // 注意不要绘画最后一个绘画步骤
+                        if (i < drawStepSize - 1) {
+                            mDrawSteps.get(i).onDraw(mBitmapCanvas);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                // 如果目前恢复的最后一个关键帧所在的位置不是倒数第二个绘画步骤，需要将目前的图像存储为一个新的关键帧
+                boolean saveFrame;
+                int currentFrameSize = mFrames.size();
+                if (currentFrameSize <= 0) {
+                    saveFrame = true;
+                } else {
+                    FrameDrawStep lastFrame = mFrames.get(currentFrameSize - 1);
+                    saveFrame = lastFrame.mDrawStepIndex < drawStepSize - 2;
+                    if (lastFrame.mDrawStepIndex > drawStepSize - 2) {
+                        throw new RuntimeException("logic error. last frame draw step index["+lastFrame.mDrawStepIndex+"], drawStepSize["+drawStepSize+"]");
+                    }
+                }
+                if (saveFrame) {
+                    // 将当前的图像存储为一个关键帧
+                    Bitmap bitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
+                    new Canvas(bitmap).drawBitmap(mBitmap, 0f, 0f, null);
+                    FrameDrawStep frame = new FrameDrawStep(drawStepSize - 2, bitmap);
+                    appendFrame(frame);
+                }
+
+                // 绘画最后一个绘画步骤
+                mDrawSteps.get(drawStepSize - 1).onDraw(mBitmapCanvas);
+                return true;
+            }
+
+            /**
+             * 将该关键帧存储到关键帧数组末尾
+             */
+            private void appendFrame(FrameDrawStep frame) {
+                int currentFrameSize = mFrames.size();
+                if (currentFrameSize >= FRAMES_SIZE_MAX) {
+                    // 关键帧过多，删除第一个，依次向前移动，新的关键帧放到最后一个位置
+                    for (int index = 0; index < currentFrameSize - 1; index++) {
+                        mFrames.set(index, mFrames.get(index + 1));
+                    }
+                    mFrames.set(currentFrameSize - 1, frame);
+                } else {
+                    mFrames.add(frame);
+                }
             }
 
             // 重新绘制缓冲区
@@ -1315,7 +1413,7 @@ public class DoodleView extends FrameLayout {
                 // 取目前关键帧中的最后两个关键帧
                 FrameDrawStep f1 = null; // 最后一个关键帧
                 FrameDrawStep f2 = null; // 倒数第二个关键帧
-                int framesSize = mFrames.size();
+                final int framesSize = mFrames.size();
                 if (framesSize > 1) {
                     // 目前关键帧数量至少有两个
                     f1 = mFrames.get(framesSize - 1);
@@ -1331,7 +1429,7 @@ public class DoodleView extends FrameLayout {
                     f1.onDraw(mBitmapCanvas);
                 }
 
-                int drawStepSize = mDrawSteps.size();
+                final int drawStepSize = mDrawSteps.size();
                 // 绘画最后一个关键帧之后除最后一个绘画步骤外的所有绘画步骤
                 // 如果没有关键帧，则从第一个绘画步骤开始绘画
                 boolean foundDrawStepsAfterLastFrame = false;
@@ -1369,15 +1467,7 @@ public class DoodleView extends FrameLayout {
                     if (reuseLastFrame) {
                         mFrames.set(framesSize - 1, latestFrame);
                     } else {
-                        if (framesSize >= FRAMES_SIZE_MAX) {
-                            // 关键帧过多，删除第一个，依次向前移动，新的关键帧放到最后一个位置
-                            for (int i = 0; i < framesSize - 1; i++) {
-                                mFrames.set(i, mFrames.get(i + 1));
-                            }
-                            mFrames.set(framesSize - 1, latestFrame);
-                        } else {
-                            mFrames.add(latestFrame);
-                        }
+                        appendFrame(latestFrame);
                     }
                 }
 
