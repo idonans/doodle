@@ -478,12 +478,17 @@ public class DoodleView extends FrameLayout {
         }
 
         private void resumeDoodle() {
-            CanvasBuffer canvasBuffer = mCanvasBuffer;
-            if (isAvailable()) {
-                canvasBuffer.postInvalidate();
-                postInvalidate();
-                canvasBuffer.notifyUndoRedoChanged();
-            }
+            enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (isAvailable()) {
+                        canvasBuffer.postInvalidate();
+                        postInvalidate();
+                        canvasBuffer.notifyUndoRedoChanged();
+                    }
+                }
+            });
         }
 
         @Override
