@@ -108,11 +108,29 @@ public class DoodleView extends FrameLayout {
         mLoadingView.setVisibility(View.VISIBLE);
     }
 
+    protected void postShowLoading() {
+        Threads.runOnUi(new Runnable() {
+            @Override
+            public void run() {
+                showLoading();
+            }
+        });
+    }
+
     /**
      * 隐藏 loading 视图.
      */
     protected void hideLoading() {
         mLoadingView.setVisibility(View.GONE);
+    }
+
+    protected void postHideLoading() {
+        Threads.runOnUi(new Runnable() {
+            @Override
+            public void run() {
+                hideLoading();
+            }
+        });
     }
 
     /**
@@ -134,6 +152,8 @@ public class DoodleView extends FrameLayout {
      * 设置画布的宽高比， 此方法会删除之前的所有绘画内容
      */
     public void setAspectRatio(int width, int height) {
+        //////
+        postShowLoading();
         mRender.setAspectRatio(width, height);
     }
 
@@ -383,6 +403,10 @@ public class DoodleView extends FrameLayout {
                     canvasBuffer.mDrawStepsRedo.add(drawStepData.create());
                 }
             }
+
+            ///////
+            postHideLoading();
+
             return canvasBuffer;
         }
 
@@ -396,6 +420,10 @@ public class DoodleView extends FrameLayout {
                     .append(", canvas buffer size [" + canvasBufferSize[0] + ", " + canvasBufferSize[1] + "]"));
 
             CanvasBuffer canvasBuffer = new CanvasBuffer(textureWidth, textureHeight, canvasBufferSize[0], canvasBufferSize[1]);
+
+            ///////
+            postHideLoading();
+
             return canvasBuffer;
         }
 
