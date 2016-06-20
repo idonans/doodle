@@ -95,6 +95,13 @@ public class DoodleView extends FrameLayout {
     }
 
     /**
+     * 设置画布的背景色
+     */
+    public void setCanvasBackgroundColor(int color) {
+
+    }
+
+    /**
      * 判断当前是否处于 loading 状态，例如当 doodle 初始化或者恢复数据时，会处于 loading 状态.
      */
     protected boolean isLoadingShown() {
@@ -341,6 +348,8 @@ public class DoodleView extends FrameLayout {
 
         private boolean mTextureEnable;
 
+        private int mCanvasBackgroundColor = Color.BLACK;
+
         /**
          * 所有与画布数据相关的操作都使用该队列处理， 如绘画手势（缩放和移动手势除外），刷新，undo, redo, 数据保存与恢复等。
          */
@@ -358,6 +367,17 @@ public class DoodleView extends FrameLayout {
             mCanvasTranslationGestureDetectorCompat.setIsLongpressEnabled(false);
             mTextureActionGestureDetectorCompat = new GestureDetectorCompat(context, new TextureActionGestureListener());
             mTextureActionGestureDetectorCompat.setIsLongpressEnabled(false);
+        }
+
+        /**
+         * 设置画布的背景色
+         */
+        public void setCanvasBackgroundColor(int color) {
+            mCanvasBackgroundColor = color;
+        }
+
+        public int getCanvasBackgroundColor() {
+            return mCanvasBackgroundColor;
         }
 
         private void enqueue(Runnable runnable) {
@@ -741,7 +761,7 @@ public class DoodleView extends FrameLayout {
                     }
 
                     // 清空背景
-                    canvas.drawColor(Color.TRANSPARENT);
+                    canvas.drawColor(getCanvasBackgroundColor());
 
                     // 将缓冲区中的内容绘画到 canvas 上
                     long timeStart = System.currentTimeMillis();
