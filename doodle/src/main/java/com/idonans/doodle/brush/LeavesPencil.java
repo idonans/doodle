@@ -1,8 +1,6 @@
 package com.idonans.doodle.brush;
 
 import android.graphics.Paint;
-import android.os.Parcel;
-import android.support.annotation.NonNull;
 
 /**
  * 柳叶笔
@@ -10,11 +8,7 @@ import android.support.annotation.NonNull;
  */
 public class LeavesPencil extends Pencil {
 
-    public LeavesPencil(@NonNull Parcel in) {
-        super(in);
-    }
-
-    public LeavesPencil(int color, int size, int alpha) {
+    public LeavesPencil(int color, float size, int alpha) {
         super(color, size, alpha);
     }
 
@@ -24,7 +18,7 @@ public class LeavesPencil extends Pencil {
     }
 
     @Override
-    public Brush cloneWithSize(int size) {
+    public Brush cloneWithSize(float size) {
         return new LeavesPencil(color, size, alpha);
     }
 
@@ -38,11 +32,6 @@ public class LeavesPencil extends Pencil {
         Paint paint = super.createPaint();
         paint.setStyle(Paint.Style.FILL);
         return paint;
-    }
-
-    @Override
-    public void writeToParcel(@NonNull Parcel out) {
-        super.writeToParcel(out);
     }
 
 }

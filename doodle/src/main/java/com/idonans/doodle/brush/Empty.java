@@ -1,6 +1,5 @@
 package com.idonans.doodle.brush;
 
-import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -9,16 +8,12 @@ import com.idonans.doodle.drawstep.DrawStep;
 
 /**
  * 空画笔，什么都不做
- * Created by idonans on 16-5-17.
+ * Created by idonans on 16-20-17.
  */
-public final class None extends Brush {
+public final class Empty extends Brush {
 
-    public None(@NonNull Parcel in) {
-        super(in);
-    }
-
-    public None() {
-        super(0, 0, 0);
+    public Empty() {
+        super(0, 0f, 0);
     }
 
     @Override
@@ -27,7 +22,7 @@ public final class None extends Brush {
     }
 
     @Override
-    public Brush cloneWithSize(int size) {
+    public Brush cloneWithSize(float size) {
         return this;
     }
 
@@ -43,11 +38,6 @@ public final class None extends Brush {
     @Override
     protected DrawStep onCreateDrawStep(@NonNull DoodleView.GestureAction gestureAction) {
         return null;
-    }
-
-    @Override
-    public void writeToParcel(@NonNull Parcel out) {
-        super.writeToParcel(out);
     }
 
 }

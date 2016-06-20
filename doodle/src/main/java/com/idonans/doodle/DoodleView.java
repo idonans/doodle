@@ -8,14 +8,11 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
-import android.view.AbsSavedState;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -30,11 +27,10 @@ import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.lang.Threads;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.brush.Brush;
-import com.idonans.doodle.brush.None;
+import com.idonans.doodle.brush.Empty;
 import com.idonans.doodle.drawstep.DrawStep;
 import com.idonans.doodle.drawstep.EmptyDrawStep;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 
 
@@ -94,7 +90,7 @@ public class DoodleView extends FrameLayout {
 
         mTextureView = ViewUtil.findViewByID(this, R.id.doodle_texture);
         mTextureView.setSurfaceTextureListener(new TextureListener());
-        mBrush = new None();
+        mBrush = new Empty();
     }
 
     /**
@@ -138,7 +134,6 @@ public class DoodleView extends FrameLayout {
      */
     public void setAspectRatio(int width, int height) {
         mRender.setAspectRatio(width, height);
-        requestLayout();
     }
 
     @Override
@@ -313,276 +308,28 @@ public class DoodleView extends FrameLayout {
         });
     }
 
-    @Override
-    protected Parcelable onSaveInstanceState() {
-        CommonLog.d(TAG + " onSaveInstanceState");
-
-        Parcelable superState = super.onSaveInstanceState();
-
-        SavedState ss = new SavedState(superState);
-        ss.mBrush = mBrush;
-
-        ss.mRenderSavedState = mRender.createRenderSavedState();
-        ss.mCanvasBufferSavedState = mRender.createCanvasBufferSavedState();
-
-        return ss;
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Parcelable state) {
-        CommonLog.d(TAG + " onRestoreInstanceState");
-
-        if (!(state instanceof SavedState)) {
-            super.onRestoreInstanceState(state);
-            return;
-        }
-
-        SavedState ss = (SavedState)state;
-        super.onRestoreInstanceState(ss.getSuperState());
-
-        mBrush = ss.mBrush;
-        mRender.restore(ss.mRenderSavedState, ss.mCanvasBufferSavedState);
-    }
-
-    public static class SavedState extends BaseSavedState {
-
-        private Brush mBrush;
-        private CanvasBufferSavedState mCanvasBufferSavedState;
-        private RenderSavedState mRenderSavedState;
-
-        public SavedState(Parcel in) {
-            super(in);
-            String brushClass = in.readString();
-            if (brushClass == null) {
-                mBrush = null;
-            } else {
-                try {
-                    mBrush = (Brush) Class.forName(brushClass).getConstructor(Parcel.class).newInstance(in);
-                } catch (Exception e) {
-                    throw new RuntimeException("error to restore draw draw brush");
-                }
-            }
-            if (in.readInt() != 0) {
-                mCanvasBufferSavedState = CanvasBufferSavedState.CREATOR.createFromParcel(in);
-            }
-            if (in.readInt() != 0) {
-                mRenderSavedState = RenderSavedState.CREATOR.createFromParcel(in);
-            }
-        }
-
-        @Override
-        public void writeToParcel(Parcel out, int flags) {
-            super.writeToParcel(out, flags);
-            if (mBrush == null) {
-                out.writeString(null);
-            } else {
-                out.writeString(mBrush.getClass().getName());
-                mBrush.writeToParcel(out);
-            }
-
-            if (mCanvasBufferSavedState == null) {
-                out.writeInt(0);
-            } else {
-                out.writeInt(1);
-                mCanvasBufferSavedState.writeToParcel(out, flags);
-            }
-
-            if (mRenderSavedState == null) {
-                out.writeInt(0);
-            } else {
-                out.writeInt(1);
-                mRenderSavedState.writeToParcel(out, flags);
-            }
-        }
-
-        public SavedState(Parcelable superState) {
-            super(superState);
-        }
-
-        public static final Parcelable.Creator<SavedState> CREATOR =
-                new Parcelable.Creator<SavedState>() {
-                    public SavedState createFromParcel(Parcel in) {
-                        return new SavedState(in);
-                    }
-
-                    public SavedState[] newArray(int size) {
-                        return new SavedState[size];
-                    }
-                };
-
-    }
-
-    public static class RenderSavedState extends AbsSavedState {
-
-        // 画布的宽高比
-        private int mAspectWidth = 1;
-        private int mAspectHeight = 1;
-
-        public RenderSavedState(Parcel source) {
-            super(source);
-            mAspectWidth = source.readInt();
-            mAspectHeight = source.readInt();
-        }
-
-        public RenderSavedState(Parcelable superState) {
-            super(superState);
-        }
-
-        @Override
-        public void writeToParcel(Parcel out, int flags) {
-            super.writeToParcel(out, flags);
-            out.writeInt(mAspectWidth);
-            out.writeInt(mAspectHeight);
-        }
-
-        public static final Parcelable.Creator<RenderSavedState> CREATOR =
-                new Parcelable.Creator<RenderSavedState>() {
-                    public RenderSavedState createFromParcel(Parcel in) {
-                        return new RenderSavedState(in);
-                    }
-
-                    public RenderSavedState[] newArray(int size) {
-                        return new RenderSavedState[size];
-                    }
-                };
-    }
-
-    public static class CanvasBufferSavedState extends AbsSavedState {
-
-        private ArrayList<DrawStep> mDrawSteps;
-        private ArrayList<DrawStep> mDrawStepsRedo;
-
-        private int mTextureWidth;
-        private int mTextureHeight;
-
-        private int mBitmapWidth; // 当前画布图像宽度
-        private int mBitmapHeight; // 当前画布图像高度
-
-        private float[] mMatrixValues = new float[9];
-
-        public CanvasBufferSavedState(Parcel in) {
-            super(in);
-            mTextureWidth = in.readInt();
-            mTextureHeight = in.readInt();
-            mBitmapWidth = in.readInt();
-            mBitmapHeight = in.readInt();
-            in.readFloatArray(mMatrixValues);
-
-            // DrawStep 需要提供一个 public 并且以 Parcel 为唯一参数的构造函数
-
-            {
-                // 恢复 mDrawSteps 中的数据
-                int drawStepsSize = in.readInt();
-                mDrawSteps = new ArrayList<>(drawStepsSize);
-                for (int i = 0; i < drawStepsSize; i++) {
-                    String clazz = in.readString();
-                    try {
-                        Constructor c = Class.forName(clazz).getConstructor(Parcel.class);
-                        DrawStep drawStep = (DrawStep) c.newInstance(in);
-                        mDrawSteps.add(drawStep);
-                    } catch (Exception e) {
-                        throw new RuntimeException("error to restore draw steps");
-                    }
-                }
-            }
-
-            {
-                // 恢复 mDrawStepsRedo 中的数据
-                int drawStepsRedoSize = in.readInt();
-                mDrawStepsRedo = new ArrayList<>(drawStepsRedoSize);
-                for (int i = 0; i < drawStepsRedoSize; i++) {
-                    String clazz = in.readString();
-                    try {
-                        Constructor c = Class.forName(clazz).getConstructor(Parcel.class);
-                        DrawStep drawStep = (DrawStep) c.newInstance(in);
-                        mDrawStepsRedo.add(drawStep);
-                    } catch (Exception e) {
-                        throw new RuntimeException("error to restore draw steps redo");
-                    }
-                }
-            }
-
-        }
-
-        public CanvasBufferSavedState(Parcelable superState) {
-            super(superState);
-        }
-
-        @Override
-        public void writeToParcel(Parcel out, int flags) {
-            super.writeToParcel(out, flags);
-            out.writeInt(mTextureWidth);
-            out.writeInt(mTextureHeight);
-            out.writeInt(mBitmapWidth);
-            out.writeInt(mBitmapHeight);
-            out.writeFloatArray(mMatrixValues);
-
-            // DrawStep 需要提供一个 public 并且以 Parcel 为唯一参数的构造函数
-
-            {
-                // 记录 mDrawSteps 中的数据
-                int drawStepsSize = 0;
-                if (mDrawSteps != null) {
-                    drawStepsSize = mDrawSteps.size();
-                }
-                out.writeInt(drawStepsSize);
-                for (int i = 0; i < drawStepsSize; i++) {
-                    DrawStep drawStep = mDrawSteps.get(i);
-                    out.writeString(drawStep.getClass().getName());
-                    drawStep.writeToParcel(out);
-                }
-            }
-
-            {
-                // 记录 mDrawStepsRedo 中的数据
-                int drawStepsRedoSize = 0;
-                if (mDrawStepsRedo != null) {
-                    drawStepsRedoSize = mDrawStepsRedo.size();
-                }
-                out.writeInt(drawStepsRedoSize);
-                for (int i = 0; i < drawStepsRedoSize; i++) {
-                    DrawStep drawStep = mDrawStepsRedo.get(i);
-                    out.writeString(drawStep.getClass().getName());
-                    drawStep.writeToParcel(out);
-                }
-            }
-        }
-
-        public static final Parcelable.Creator<CanvasBufferSavedState> CREATOR =
-                new Parcelable.Creator<CanvasBufferSavedState>() {
-                    public CanvasBufferSavedState createFromParcel(Parcel in) {
-                        return new CanvasBufferSavedState(in);
-                    }
-
-                    public CanvasBufferSavedState[] newArray(int size) {
-                        return new CanvasBufferSavedState[size];
-                    }
-                };
-    }
-
     private class Render implements Available {
 
         private static final String TAG = "DoodleView$Render";
 
-        // 画布的宽高比
+        // 画布的宽高比, 恢复数据时不受该比例影响, 只是在新建画布时，用来辅助计算 canvas 的尺寸
         private int mAspectWidth = 1;
         private int mAspectHeight = 1;
 
-        private final Object mBufferLock = new Object();
         private volatile CanvasBuffer mCanvasBuffer;
 
         private boolean mTextureEnable;
 
+        /**
+         * 所有与画布数据相关的操作都使用该队列处理， 如绘画手势（缩放和移动手势除外），刷新，undo, redo, 数据保存与恢复等。
+         */
         private final TaskQueue mTaskQueue = new TaskQueue(1);
+
+        private DoodleData mPendingDoodleData;
 
         private final TwoPointScaleGestureDetector mCanvasScaleGestureDetector;
         private final GestureDetectorCompat mCanvasTranslationGestureDetectorCompat;
         private final GestureDetectorCompat mTextureActionGestureDetectorCompat;
-
-        private boolean mHasPendingSavedState;
-        private RenderSavedState mPendingRenderSavedState;
-        private CanvasBufferSavedState mPendingCanvasBufferSavedState;
-
 
         private Render(Context context) {
             mCanvasScaleGestureDetector = new TwoPointScaleGestureDetector(context, new CanvasScaleGestureListener());
@@ -592,91 +339,63 @@ public class DoodleView extends FrameLayout {
             mTextureActionGestureDetectorCompat.setIsLongpressEnabled(false);
         }
 
+        private void enqueue(Runnable runnable) {
+            this.mTaskQueue.enqueue(runnable);
+        }
+
         /**
-         * 从历史中恢复当前画板的状态, 当前画板的 canvas 可能还没有初始化完成
+         * 载入数据, 当前画板的 canvas 可能还没有初始化完成
          */
-        private void restore(RenderSavedState renderSavedState, CanvasBufferSavedState canvasBufferSavedState) {
-            synchronized (mBufferLock) {
-                if (mCanvasBuffer == null) {
-                    // 画布还没有准备好，延迟恢复
-                    mHasPendingSavedState = true;
-                    mPendingRenderSavedState = renderSavedState;
-                    mPendingCanvasBufferSavedState = canvasBufferSavedState;
-                    return;
-                }
-
-                mHasPendingSavedState = false;
-                forceRestoreToState(renderSavedState, canvasBufferSavedState);
-                mPendingRenderSavedState = null;
-                mPendingCanvasBufferSavedState = null;
-                resumeDoodle();
-            }
-        }
-
-        private void forceRestoreToState(RenderSavedState renderSavedState, CanvasBufferSavedState canvasBufferSavedState) {
-            synchronized (mBufferLock) {
-                mCanvasBuffer = null;
-
-                if (renderSavedState == null) {
-                    return;
-                }
-
-                // canvas buffer 中没有需要恢复的内容，如果画布比例不同，则重新初始化
-                if (canvasBufferSavedState == null) {
-                    if (mAspectWidth != renderSavedState.mAspectWidth
-                            || mAspectHeight != renderSavedState.mAspectHeight) {
-                        DoodleView.this.setAspectRatio(renderSavedState.mAspectWidth, renderSavedState.mAspectHeight);
+        private void load(@NonNull final DoodleData doodleData) {
+            enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    if (mCanvasBuffer == null) {
+                        // 画布还没有准备好，延迟恢复
+                        mPendingDoodleData = doodleData;
+                        return;
                     }
-                    return;
-                }
 
-                // 恢复画布比例和缓存的 canvas buffer
-                mAspectWidth = renderSavedState.mAspectWidth;
-                mAspectHeight = renderSavedState.mAspectHeight;
+                    // 恢复数据
+                    CanvasBuffer canvasBufferOld = mCanvasBuffer;
+                    mCanvasBuffer = null;
+                    mPendingDoodleData = null;
 
-                CanvasBuffer canvasBuffer = new CanvasBuffer(canvasBufferSavedState.mTextureWidth,
-                        canvasBufferSavedState.mTextureHeight,
-                        canvasBufferSavedState.mBitmapWidth,
-                        canvasBufferSavedState.mBitmapHeight);
-                if (canvasBufferSavedState.mDrawSteps != null) {
-                    canvasBuffer.mDrawSteps.addAll(canvasBufferSavedState.mDrawSteps);
+                    mCanvasBuffer = createCanvasBuffer(
+                            canvasBufferOld.mTextureWidth, canvasBufferOld.mTextureHeight,
+                            doodleData);
                 }
-                if (canvasBufferSavedState.mDrawStepsRedo != null) {
-                    canvasBuffer.mDrawStepsRedo.addAll(canvasBufferSavedState.mDrawStepsRedo);
-                }
-
-                Matrix matrix = canvasBuffer.getMatrix();
-                matrix.setValues(canvasBufferSavedState.mMatrixValues);
-                canvasBuffer.setMatrix(matrix);
-                mCanvasBuffer = canvasBuffer;
-            }
+            });
         }
 
-        private RenderSavedState createRenderSavedState() {
-            synchronized (mBufferLock) {
-                RenderSavedState renderSavedState = new RenderSavedState(AbsSavedState.EMPTY_STATE);
-                renderSavedState.mAspectWidth = this.mAspectWidth;
-                renderSavedState.mAspectHeight = this.mAspectHeight;
-                return renderSavedState;
+        private CanvasBuffer createCanvasBuffer(int textureWidth, int textureHeight, @NonNull DoodleData doodleData) {
+            CanvasBuffer canvasBuffer = new CanvasBuffer(
+                    textureWidth, textureHeight,
+                    doodleData.width, doodleData.height);
+            if (doodleData.drawStepDatas != null) {
+                for (DoodleData.DrawStepData drawStepData : doodleData.drawStepDatas) {
+                    canvasBuffer.mDrawSteps.add(drawStepData.create());
+                }
             }
+            if (doodleData.drawStepDatasRedo != null) {
+                for (DoodleData.DrawStepData drawStepData : doodleData.drawStepDatasRedo) {
+                    canvasBuffer.mDrawStepsRedo.add(drawStepData.create());
+                }
+            }
+            return canvasBuffer;
         }
 
-        private CanvasBufferSavedState createCanvasBufferSavedState() {
-            synchronized (mBufferLock) {
-                CanvasBuffer canvasBuffer = this.mCanvasBuffer;
-                if (canvasBuffer == null) {
-                    return null;
-                }
-                CanvasBufferSavedState canvasBufferSavedState = new CanvasBufferSavedState(AbsSavedState.EMPTY_STATE);
-                canvasBufferSavedState.mDrawStepsRedo = canvasBuffer.mDrawStepsRedo;
-                canvasBufferSavedState.mDrawSteps = canvasBuffer.mDrawSteps;
-                canvasBufferSavedState.mBitmapWidth = canvasBuffer.mBitmapWidth;
-                canvasBufferSavedState.mBitmapHeight = canvasBuffer.mBitmapHeight;
-                canvasBufferSavedState.mTextureWidth = canvasBuffer.mTextureWidth;
-                canvasBufferSavedState.mTextureHeight = canvasBuffer.mTextureHeight;
-                canvasBuffer.getMatrix().getValues(canvasBufferSavedState.mMatrixValues);
-                return canvasBufferSavedState;
-            }
+        private CanvasBuffer createCanvasBuffer(int textureWidth, int textureHeight) {
+            int[] canvasBufferSize = calculatePerfectSizeWithAspect(textureWidth, textureHeight, mAspectWidth, mAspectHeight);
+            CommonLog.d(new StringBuilder()
+                    .append(TAG)
+                    .append(" create canvas buffer")
+                    .append(", texture size [" + textureWidth + ", " + textureHeight + "]")
+                    .append(", current aspect [" + mAspectWidth + ", " + mAspectHeight + "]")
+                    .append(", canvas buffer size [" + canvasBufferSize[0] + ", " + canvasBufferSize[1] + "]"));
+
+            CanvasBuffer canvasBuffer = new CanvasBuffer(textureWidth, textureHeight, canvasBufferSize[0], canvasBufferSize[1]);
+            return canvasBuffer;
         }
 
         private class TwoPointScaleGestureDetector extends ScaleGestureDetector {
@@ -706,43 +425,51 @@ public class DoodleView extends FrameLayout {
 
         }
 
-        private void setAspectRatio(int aspectWidth, int aspectHeight) {
-            synchronized (mBufferLock) {
-                mCanvasBuffer = null;
-                mAspectWidth = aspectWidth;
-                mAspectHeight = aspectHeight;
-            }
+        private void setAspectRatio(final int aspectWidth, final int aspectHeight) {
+            enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    if (mCanvasBuffer == null) {
+                        // 画布还没有准备好
+                        mAspectWidth = aspectWidth;
+                        mAspectHeight = aspectHeight;
+                        return;
+                    }
+
+                    // 使用当前的 texture 重新构建 canvas buffer
+                    CanvasBuffer canvasBufferOld = mCanvasBuffer;
+                    mCanvasBuffer = null;
+                    mCanvasBuffer = createCanvasBuffer(canvasBufferOld.mTextureWidth, canvasBufferOld.mTextureHeight);
+                }
+            });
         }
 
-        private void init(int width, int height) {
-            synchronized (mBufferLock) {
-                if (mCanvasBuffer != null) {
-                    CommonLog.d(TAG + " canvas buffer found " + mCanvasBuffer.toShortString()
-                            + ", current aspect [" + mAspectWidth + ", " + mAspectHeight + "], [" + width + ", " + height + "]");
-                    if (mCanvasBuffer.mTextureWidth != width || mCanvasBuffer.mTextureHeight != height) {
-                        CommonLog.e(TAG + " current canvas buffer texture size not match");
+        private void init(final int textureWidth, final int textureHeight) {
+            enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    if (mPendingDoodleData != null) {
+                        DoodleData doodleData = mPendingDoodleData;
+
+                        mCanvasBuffer = null;
+                        mPendingDoodleData = null;
+
+                        mCanvasBuffer = createCanvasBuffer(textureWidth, textureHeight, doodleData);
+                        return;
                     }
-                    return;
-                }
 
-                // 从历史恢复
-                if (mHasPendingSavedState) {
-                    mHasPendingSavedState = false;
-                    forceRestoreToState(mPendingRenderSavedState, mPendingCanvasBufferSavedState);
-                    mPendingRenderSavedState = null;
-                    mPendingCanvasBufferSavedState = null;
-                    return;
-                }
+                    if (mCanvasBuffer != null) {
+                        CommonLog.d(TAG + " canvas buffer found " + mCanvasBuffer.toShortString()
+                                + ", current aspect [" + mAspectWidth + ", " + mAspectHeight + "], [" + textureWidth + ", " + textureHeight + "]");
+                        if (mCanvasBuffer.mTextureWidth != textureWidth || mCanvasBuffer.mTextureHeight != textureHeight) {
+                            CommonLog.e(TAG + " current canvas buffer texture size not match");
+                        }
+                        return;
+                    }
 
-                int[] canvasBufferSize = calculatePerfectSizeWithAspect(width, height, mAspectWidth, mAspectHeight);
-                CommonLog.d(new StringBuilder()
-                        .append(TAG)
-                        .append(" create canvas buffer")
-                        .append(", texture size [" + width + ", " + height + "]")
-                        .append(", current aspect [" + mAspectWidth + ", " + mAspectHeight + "]")
-                        .append(", canvas buffer size [" + canvasBufferSize[0] + ", " + canvasBufferSize[1] + "]"));
-                mCanvasBuffer = new CanvasBuffer(width, height, canvasBufferSize[0], canvasBufferSize[1]);
-            }
+                    mCanvasBuffer = createCanvasBuffer(textureWidth, textureHeight);
+                }
+            });
         }
 
         public void setTextureEnable(boolean textureEnable) {
@@ -997,11 +724,11 @@ public class DoodleView extends FrameLayout {
         }
 
         public void postInvalidate() {
-            mTaskQueue.enqueue(new Draw());
+            this.enqueue(new Draw());
         }
 
         public void enqueueGestureAction(final GestureAction gestureAction) {
-            mTaskQueue.enqueue(new Runnable() {
+            this.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
@@ -1022,7 +749,7 @@ public class DoodleView extends FrameLayout {
          * 是否可以回退
          */
         public void canUndo(final ActionCallback callback) {
-            mTaskQueue.enqueue(new Runnable() {
+            this.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
@@ -1040,7 +767,7 @@ public class DoodleView extends FrameLayout {
          * 回退操作，回退成功，返回 true, 否则返回 false.
          */
         public void undo(final ActionCallback callback) {
-            mTaskQueue.enqueue(new Runnable() {
+            this.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
@@ -1058,7 +785,7 @@ public class DoodleView extends FrameLayout {
          * 是否可以前进, undo 之后的反向恢复
          */
         public void canRedo(final ActionCallback callback) {
-            mTaskQueue.enqueue(new Runnable() {
+            this.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
@@ -1076,7 +803,7 @@ public class DoodleView extends FrameLayout {
          * 反向恢复，恢复成功，返回 true, 否则返回 false.
          */
         public void redo(final ActionCallback callback) {
-            mTaskQueue.enqueue(new Runnable() {
+            this.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
@@ -1404,7 +1131,7 @@ public class DoodleView extends FrameLayout {
                     FrameDrawStep lastFrame = mFrames.get(currentFrameSize - 1);
                     saveFrame = lastFrame.mDrawStepIndex < drawStepSize - 2;
                     if (lastFrame.mDrawStepIndex > drawStepSize - 2) {
-                        throw new RuntimeException("logic error. last frame draw step index["+lastFrame.mDrawStepIndex+"], drawStepSize["+drawStepSize+"]");
+                        throw new RuntimeException("logic error. last frame draw step index[" + lastFrame.mDrawStepIndex + "], drawStepSize[" + drawStepSize + "]");
                     }
                 }
                 if (saveFrame) {
@@ -1431,8 +1158,8 @@ public class DoodleView extends FrameLayout {
                     if (mFrames.get(currentFrameSize - 1).mDrawStepIndex >= frame.mDrawStepIndex) {
                         throw new RuntimeException(
                                 "append frame error, index out of range. ["
-                                        +(mFrames.get(currentFrameSize - 1).mDrawStepIndex)
-                                        +", "+(frame.mDrawStepIndex)+"]");
+                                        + (mFrames.get(currentFrameSize - 1).mDrawStepIndex)
+                                        + ", " + (frame.mDrawStepIndex) + "]");
                     }
                 }
 
@@ -1642,7 +1369,7 @@ public class DoodleView extends FrameLayout {
         private final Bitmap mBitmap; // 从0到该 draw step index (包含) 所有绘画步骤完成之后的图像
 
         public FrameDrawStep(int drawStepIndex, Bitmap bitmap) {
-            super((Brush)null);
+            super((Brush) null);
             mDrawStepIndex = drawStepIndex;
             mBitmap = bitmap;
         }

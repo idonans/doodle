@@ -1,6 +1,5 @@
 package com.idonans.doodle.brush;
 
-import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -15,11 +14,7 @@ import com.idonans.doodle.drawstep.ScribbleDrawStep;
  */
 public class Pencil extends Brush {
 
-    public Pencil(@NonNull Parcel in) {
-        super(in);
-    }
-
-    public Pencil(int color, int size, int alpha) {
+    public Pencil(int color, float size, int alpha) {
         super(color, size, alpha);
     }
 
@@ -29,7 +24,7 @@ public class Pencil extends Brush {
     }
 
     @Override
-    public Brush cloneWithSize(int size) {
+    public Brush cloneWithSize(float size) {
         return new Pencil(color, size, alpha);
     }
 
@@ -63,11 +58,6 @@ public class Pencil extends Brush {
         }
 
         return null;
-    }
-
-    @Override
-    public void writeToParcel(@NonNull Parcel out) {
-        super.writeToParcel(out);
     }
 
 }

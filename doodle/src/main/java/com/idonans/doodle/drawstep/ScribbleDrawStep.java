@@ -3,11 +3,10 @@ package com.idonans.doodle.drawstep;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.os.Parcel;
 import android.support.annotation.NonNull;
 
 import com.idonans.doodle.DoodleView;
-import com.idonans.doodle.brush.Pencil;
+import com.idonans.doodle.brush.Brush;
 
 import java.util.ArrayList;
 
@@ -25,52 +24,12 @@ public class ScribbleDrawStep extends DrawStep {
 
     private final ArrayList<Float> mAllPoints;
 
-    public ScribbleDrawStep(Parcel in) {
-        super(in);
-        mPaint = mDrawBrush.createPaint();
-
-        mPath = new Path();
-
-        int pointSize = in.readInt();
-        float[] allPoints = new float[pointSize];
-        in.readFloatArray(allPoints);
-
-        mPreX = allPoints[0];
-        mPreY = allPoints[1];
-        mPath.moveTo(mPreX, mPreY);
-
-        mAllPoints = new ArrayList<>(allPoints.length);
-        mAllPoints.add(mPreX);
-        mAllPoints.add(mPreY);
-        for (int i = 2; i < allPoints.length; i++) {
-            float x = allPoints[i];
-            i++;
-            float y = allPoints[i];
-            toPoint(x, y);
-        }
-    }
-
-    @Override
-    public void writeToParcel(Parcel out) {
-        super.writeToParcel(out);
-        int pointSize = mAllPoints.size();
-        out.writeInt(pointSize);
-
-        Float[] array = mAllPoints.toArray(new Float[pointSize]);
-        float[] floatArray = new float[pointSize];
-        for (int i = 0; i < pointSize; i++) {
-            floatArray[i] = array[i];
-        }
-
-        out.writeFloatArray(floatArray);
-    }
-
     /**
-     * 用铅笔自由绘制
+     * 自由绘制
      */
-    public ScribbleDrawStep(@NonNull Pencil pencil, float x, float y) {
-        super(pencil);
-        mPaint = pencil.createPaint();
+    public ScribbleDrawStep(@NonNull Brush brush, float x, float y) {
+        super(brush);
+        mPaint = brush.createPaint();
 
         mPath = new Path();
         mPath.moveTo(x, y);
@@ -80,6 +39,10 @@ public class ScribbleDrawStep extends DrawStep {
         mAllPoints = new ArrayList<>();
         mAllPoints.add(x);
         mAllPoints.add(y);
+    }
+
+    public ArrayList<Float> getAllPoints() {
+        return mAllPoints;
     }
 
     /**
