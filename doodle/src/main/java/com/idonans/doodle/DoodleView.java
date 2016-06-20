@@ -857,10 +857,15 @@ public class DoodleView extends FrameLayout {
                 mMatrixTmp = new Matrix();
                 mMatrixInvertTmp = new Matrix();
 
-                // 调整图像位置，使得 bitmap 居中
-                Matrix matrix = getMatrix();
-                matrix.postTranslate((mTextureWidth - mBitmapWidth) / 2f, (mTextureHeight - mBitmapHeight) / 2f);
-                setMatrix(matrix);
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        // 调整图像位置，使得 bitmap 居中
+                        Matrix matrix = getMatrix();
+                        matrix.postTranslate((mTextureWidth - mBitmapWidth) / 2f, (mTextureHeight - mBitmapHeight) / 2f);
+                        setMatrix(matrix);
+                    }
+                });
             }
 
             public String toShortString() {
@@ -1043,8 +1048,13 @@ public class DoodleView extends FrameLayout {
             }
 
             public void postInvalidate() {
-                Matrix matrix = getMatrix();
-                setMatrix(matrix);
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        Matrix matrix = getMatrix();
+                        setMatrix(matrix);
+                    }
+                });
             }
 
             public void setLastDrawingTime(long lastDrawingTime) {
