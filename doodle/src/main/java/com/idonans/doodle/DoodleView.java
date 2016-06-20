@@ -440,6 +440,7 @@ public class DoodleView extends FrameLayout {
                     CanvasBuffer canvasBufferOld = mCanvasBuffer;
                     mCanvasBuffer = null;
                     mCanvasBuffer = createCanvasBuffer(canvasBufferOld.mTextureWidth, canvasBufferOld.mTextureHeight);
+                    resumeDoodle();
                 }
             });
         }
