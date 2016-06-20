@@ -99,14 +99,23 @@ public class DoodleView extends FrameLayout {
         mBrush = new None();
     }
 
+    /**
+     * 判断当前是否处于 loading 状态，例如当 doodle 初始化或者恢复数据时，会处于 loading 状态.
+     */
     protected boolean isLoadingShown() {
         return mLoadingView.getVisibility() == View.VISIBLE;
     }
 
+    /**
+     * 显示 loading 视图，当 loading 视图显示时，所有的 touch 操作都会被忽略.
+     */
     protected void showLoading() {
         mLoadingView.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * 隐藏 loading 视图.
+     */
     protected void hideLoading() {
         mLoadingView.setVisibility(View.GONE);
     }
