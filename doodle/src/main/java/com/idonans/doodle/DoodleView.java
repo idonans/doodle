@@ -972,8 +972,16 @@ public class DoodleView extends FrameLayout {
                 return true;
             }
 
-            public void setMatrix(Matrix matrix) {
+            public void setMatrix(final Matrix matrix) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        setMatrixInternal(matrix);
+                    }
+                });
+            }
 
+            public void setMatrixInternal(Matrix matrix) {
                 // 需要约束变换范围, 先处理 scale, 再处理 translation
                 float[] values = new float[9];
 
