@@ -25,6 +25,7 @@ import com.idonans.acommon.lang.Available;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.lang.Threads;
+import com.idonans.acommon.util.DimenUtil;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.Empty;
@@ -517,12 +518,12 @@ public class DoodleView extends FrameLayout {
 
                 if (scaleFactor > 1f) {
                     // 如果还可以放大，再放大
-                    if (values[Matrix.MSCALE_X] < CanvasBuffer.MAX_SCALE) {
+                    if (values[Matrix.MSCALE_X] < canvasBuffer.mMaxScale) {
                         matrix.postScale(scaleFactor, scaleFactor, mPx, mPy);
                     }
                 } else if (scaleFactor < 1f) {
                     // 如果还可以缩小，再缩小
-                    if (values[Matrix.MSCALE_X] > CanvasBuffer.MIN_SCALE) {
+                    if (values[Matrix.MSCALE_X] > canvasBuffer.mMinScale) {
                         matrix.postScale(scaleFactor, scaleFactor, mPx, mPy);
                     }
                 }
@@ -836,8 +837,9 @@ public class DoodleView extends FrameLayout {
             private final ArrayList<DrawStep> mDrawSteps = new ArrayList<>();
             private final ArrayList<DrawStep> mDrawStepsRedo = new ArrayList<>();
 
-            private static final float MAX_SCALE = 2.75f;
-            private static final float MIN_SCALE = 0.75f;
+            private final float mMaxScale;
+            private final float mMinScale;
+            private final float mBestScale;
 
             private final int mTextureWidth;
             private final int mTextureHeight;
@@ -864,12 +866,32 @@ public class DoodleView extends FrameLayout {
                 mMatrixTmp = new Matrix();
                 mMatrixInvertTmp = new Matrix();
 
+                final int dp10 = DimenUtil.dp2px(10);
+
+                // 计算缩放范围
+                float bestScaleX = Math.max(dp10, mTextureWidth - dp10) * 1f / mBitmapWidth;
+                float bestScaleY = Math.max(dp10, mTextureHeight - dp10) * 1f / mBitmapHeight;
+                float bestScale = Math.min(bestScaleX, bestScaleY);
+
+                // 如果 bitmap 比 texture 小，则默认比例是 1， 按照原图尺寸显示
+                if (bestScale > 1) {
+                    bestScale = 1;
+                }
+
+                mBestScale = bestScale;
+                mMaxScale = Math.max(1, mBestScale * 2.75f);
+                mMinScale = mBestScale * 0.75f;
+
                 Threads.runOnUi(new Runnable() {
                     @Override
                     public void run() {
                         // 调整图像位置，使得 bitmap 居中
+                        // 当前画布可能不在左上角，需要动态计算
                         Matrix matrix = getMatrix();
-                        matrix.postTranslate((mTextureWidth - mBitmapWidth) / 2f, (mTextureHeight - mBitmapHeight) / 2f);
+                        // 先计算缩放
+                        matrix.setScale(mBestScale, mBestScale, 0, 0);
+                        matrix.postTranslate((mTextureWidth - mBitmapWidth * mBestScale) / 2f,
+                                (mTextureHeight - mBitmapHeight * mBestScale) / 2f);
                         setMatrix(matrix);
                     }
                 });
@@ -994,18 +1016,19 @@ public class DoodleView extends FrameLayout {
             }
 
             public void setMatrixInternal(Matrix matrix) {
+                CommonLog.d(TAG + " set matrix internal");
                 // 需要约束变换范围, 先处理 scale, 再处理 translation
                 float[] values = new float[9];
 
                 matrix.getValues(values);
                 float scale = values[Matrix.MSCALE_X];
                 boolean changed = false;
-                if (scale > MAX_SCALE) {
-                    float scaleFactorAdjust = MAX_SCALE / scale;
+                if (scale > mMaxScale) {
+                    float scaleFactorAdjust = mMaxScale / scale;
                     matrix.postScale(scaleFactorAdjust, scaleFactorAdjust, values[Matrix.MTRANS_X], values[Matrix.MTRANS_Y]);
                     changed = true;
-                } else if (scale < MIN_SCALE) {
-                    float scaleFactorAdjust = MIN_SCALE / scale;
+                } else if (scale < mMinScale) {
+                    float scaleFactorAdjust = mMinScale / scale;
                     matrix.postScale(scaleFactorAdjust, scaleFactorAdjust, values[Matrix.MTRANS_X], values[Matrix.MTRANS_Y]);
                     changed = true;
                 }
@@ -1043,6 +1066,7 @@ public class DoodleView extends FrameLayout {
 
                 mTextureView.setTransform(matrix);
                 mTextureView.postInvalidate();
+                DoodleView.this.postInvalidate();
             }
 
             private void debugMatrix(Matrix matrix) {
