@@ -19,15 +19,18 @@ import android.util.AttributeSet;
 import android.view.AbsSavedState;
 import android.view.GestureDetector;
 import android.view.InputDevice;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.TextureView;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import com.idonans.acommon.lang.Available;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.lang.Threads;
+import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.None;
 import com.idonans.doodle.drawstep.DrawStep;
@@ -35,8 +38,6 @@ import com.idonans.doodle.drawstep.EmptyDrawStep;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
-
-import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
 
 /**
@@ -69,6 +70,9 @@ public class DoodleView extends FrameLayout {
     private static final String TAG = "DoodleView";
 
     @NonNull
+    private View mLoadingView;
+
+    @NonNull
     private Render mRender;
 
     @NonNull
@@ -78,15 +82,29 @@ public class DoodleView extends FrameLayout {
     private Brush mBrush;
 
     private void init() {
+        Context context = getContext();
+        LayoutInflater layoutInflater = LayoutInflater.from(context);
+        layoutInflater.inflate(R.layout.doodle_layout, this, true);
+
+        mLoadingView = ViewUtil.findViewByID(this, R.id.doodle_loading);
+
         mRender = new Render(getContext());
 
-        mTextureView = new TextureView(getContext());
-        addView(mTextureView, new LayoutParams(MATCH_PARENT, MATCH_PARENT));
-
+        mTextureView = ViewUtil.findViewByID(this, R.id.doodle_texture);
         mTextureView.setSurfaceTextureListener(new TextureListener());
         mBrush = new None();
+    }
 
-        setAspectRatio(3, 4);
+    protected boolean isLoadingShown() {
+        return mLoadingView.getVisibility() == View.VISIBLE;
+    }
+
+    protected void showLoading() {
+        mLoadingView.setVisibility(View.VISIBLE);
+    }
+
+    protected void hideLoading() {
+        mLoadingView.setVisibility(View.GONE);
     }
 
     /**
@@ -119,7 +137,9 @@ public class DoodleView extends FrameLayout {
             requestDisallowInterceptTouchEvent(true);
         }
 
-        mRender.onTouchEvent(event);
+        if (!isLoadingShown()) {
+            mRender.onTouchEvent(event);
+        }
         return true;
     }
 
