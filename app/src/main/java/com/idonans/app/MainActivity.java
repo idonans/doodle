@@ -7,16 +7,21 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.idonans.acommon.app.CommonActivity;
+import com.idonans.acommon.data.StorageManager;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleData;
+import com.idonans.doodle.DoodleDataCompile;
 import com.idonans.doodle.DoodleView;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.Pencil;
 
+import java.util.UUID;
+
 public class MainActivity extends CommonActivity implements BrushSettingFragment.BrushSettingListener {
 
     private static final String TAG = "MainActivity";
+    private static final String EXTRA_DOODLE_DATA_KEY = "doodle_data";
     private DoodleView mDoodleView;
     private ViewGroup mDoodleActionPanel;
     private View mUndo;
@@ -25,16 +30,31 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
 
     private int mAspectType = 1;
 
-    private DoodleData mDoodleDataSaved;
+    private String mDoodleDataKey;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
 
+        DoodleData doodleDataSaved = null;
+        if (savedInstanceState != null) {
+            mDoodleDataKey = savedInstanceState.getString(EXTRA_DOODLE_DATA_KEY);
+            if (mDoodleDataKey != null) {
+                String value = StorageManager.getInstance().getCache(mDoodleDataKey);
+                doodleDataSaved = DoodleDataCompile.valueOf(value);
+            }
+        }
+
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
         mDoodleView.setBrush(new Pencil(Color.BLACK, 50, 255));
-        mDoodleView.setCanvasBackgroundColor(Color.YELLOW);
+
+        // restore doodle data
+        if (doodleDataSaved != null) {
+            mDoodleView.load(doodleDataSaved);
+        } else {
+            mDoodleView.setCanvasBackgroundColor(Color.YELLOW);
+        }
 
         mDoodleActionPanel = ViewUtil.findViewByID(this, R.id.doodle_action_panel);
         mUndo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.undo);
@@ -139,6 +159,26 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
     public void setBrushType(int type) {
         // TODO
     }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        if (mDoodleDataKey == null) {
+            mDoodleDataKey = UUID.randomUUID().toString();
+        }
+        outState.putString(EXTRA_DOODLE_DATA_KEY, mDoodleDataKey);
+
+        mDoodleView.save(new DoodleView.SaveDataActionCallback() {
+            @Override
+            public void onDataSaved(@Nullable DoodleData doodleData) {
+                String json = DoodleDataCompile.toJson(doodleData);
+                StorageManager.getInstance().setCache(mDoodleDataKey, json);
+            }
+        });
+    }
+
+    private DoodleData mDoodleDataSaved;
 
     @Override
     public void saveDoodleData() {
