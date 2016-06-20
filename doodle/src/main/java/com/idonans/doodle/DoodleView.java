@@ -445,7 +445,7 @@ public class DoodleView extends FrameLayout {
                     Threads.runOnUi(new Runnable() {
                         @Override
                         public void run() {
-                            DoodleView.this.setBackgroundColor(doodleData.backgroundColor);
+                            DoodleView.this.setCanvasBackgroundColor(doodleData.backgroundColor);
                         }
                     });
                 }
