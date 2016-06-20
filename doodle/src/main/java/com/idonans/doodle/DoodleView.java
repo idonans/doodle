@@ -305,6 +305,17 @@ public class DoodleView extends FrameLayout {
     }
 
     /**
+     * 载入数据, 当前画板的 canvas 可能还没有初始化完成
+     */
+    public void load(DoodleData doodleData) {
+        if (doodleData == null) {
+            return;
+        }
+        postShowLoading();
+        mRender.load(doodleData);
+    }
+
+    /**
      * 是否可以前进, undo 之后的反向恢复. 在 ui 线程中回调.
      */
     public void canRedo(final ActionCallback callback) {
@@ -333,6 +344,30 @@ public class DoodleView extends FrameLayout {
                 if (success) {
                     mRender.postInvalidate();
                 }
+            }
+        });
+    }
+
+    public interface SaveDataActionCallback {
+        void onDataSaved(@Nullable DoodleData doodleData);
+    }
+
+    public void save(final SaveDataActionCallback callback) {
+        if (callback == null) {
+            return;
+        }
+
+        postShowLoading();
+        mRender.save(new SaveDataActionCallback() {
+            @Override
+            public void onDataSaved(@Nullable final DoodleData doodleData) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onDataSaved(doodleData);
+                        postHideLoading();
+                    }
+                });
             }
         });
     }
@@ -407,6 +442,38 @@ public class DoodleView extends FrameLayout {
                     mCanvasBuffer = createCanvasBuffer(
                             canvasBufferOld.mTextureWidth, canvasBufferOld.mTextureHeight,
                             doodleData);
+                    Threads.runOnUi(new Runnable() {
+                        @Override
+                        public void run() {
+                            DoodleView.this.setBackgroundColor(doodleData.backgroundColor);
+                        }
+                    });
+                }
+            });
+        }
+
+        private void save(@NonNull final SaveDataActionCallback callback) {
+            enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    if (mCanvasBuffer == null) {
+                        // 画布还没有准备好
+                        callback.onDataSaved(null);
+                        return;
+                    }
+
+                    if (!mCanvasBuffer.hasAnyNoneEmptyDrawStep()) {
+                        // 没有有效的绘画步骤，这是一张空白
+                        callback.onDataSaved(null);
+                        return;
+                    }
+
+                    DoodleData doodleData = new DoodleData();
+                    doodleData.setBackgroundColor(getCanvasBackgroundColor());
+                    doodleData.setSize(mCanvasBuffer.mBitmapWidth, mCanvasBuffer.mBitmapHeight);
+                    doodleData.setDrawSteps(mCanvasBuffer.mDrawSteps);
+                    doodleData.setDrawStepsRedo(mCanvasBuffer.mDrawStepsRedo);
+                    callback.onDataSaved(doodleData);
                 }
             });
         }
@@ -963,6 +1030,21 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
                 return mDrawSteps.get(size - 1) instanceof EmptyDrawStep;
+            }
+
+            /**
+             * 是否有有效的绘画步骤 (不包含 redo 中的步骤)
+             */
+            public boolean hasAnyNoneEmptyDrawStep() {
+                int size = mDrawSteps.size();
+                if (size <= 0) {
+                    return false;
+                }
+                if (size == 1) {
+                    // 如果只有一个绘画步骤，需要校验该步骤是否是一个空步骤
+                    return !(mDrawSteps.get(0) instanceof EmptyDrawStep);
+                }
+                return true;
             }
 
             /**

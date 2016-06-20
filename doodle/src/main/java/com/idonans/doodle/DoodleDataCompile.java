@@ -23,10 +23,12 @@ public class DoodleDataCompile {
         }
         try {
             Gson gson = new Gson();
-            Type type = new TypeToken<PreCompile>(){}.getType();
+            Type type = new TypeToken<PreCompile>() {
+            }.getType();
             PreCompile preCompile = gson.fromJson(json, type);
             if (DoodleData.isVersionSupport(preCompile.version)) {
-                Type typeDoodleData = new TypeToken<DoodleData>(){}.getType();
+                Type typeDoodleData = new TypeToken<DoodleData>() {
+                }.getType();
                 return gson.fromJson(json, typeDoodleData);
             } else {
                 CommonLog.d(TAG + ", not support version " + preCompile.version);
@@ -38,15 +40,17 @@ public class DoodleDataCompile {
     }
 
     /**
-     * 提取 doodle view 中的内容，转换为 DoodleData 对象， 如果转换失败，返回 null.
+     * 提取 doodle view 中的内容，转换为 DoodleData 对象， 如果转换失败，得到 null.
      */
-    public static DoodleData valueOf(DoodleView doodleView) {
-        if (doodleView == null) {
-            return null;
+    public static void saveSync(DoodleView doodleView, DoodleView.SaveDataActionCallback callback) {
+        if (doodleView == null || callback == null) {
+            if (callback != null) {
+                callback.onDataSaved(null);
+            }
+            return;
         }
 
-        // TODO
-        return null;
+        doodleView.save(callback);
     }
 
     /**
@@ -58,7 +62,8 @@ public class DoodleDataCompile {
         }
         try {
             Gson gson = new Gson();
-            Type typeDoodleData = new TypeToken<DoodleData>(){}.getType();
+            Type typeDoodleData = new TypeToken<DoodleData>() {
+            }.getType();
             return gson.toJson(doodleData, typeDoodleData);
         } catch (Exception e) {
             e.printStackTrace();

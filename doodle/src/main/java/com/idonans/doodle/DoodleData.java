@@ -41,11 +41,20 @@ public class DoodleData {
      */
     public int height;
 
+    /**
+     * 背景色
+     */
+    public int backgroundColor;
+
     public ArrayList<DrawStepData> drawStepDatas;
     public ArrayList<DrawStepData> drawStepDatasRedo;
 
     public static boolean isVersionSupport(int version) {
         return version == VERSION_1;
+    }
+
+    public void setBackgroundColor(int backgroundColor) {
+        this.backgroundColor = backgroundColor;
     }
 
     public void setSize(int width, int height) {
