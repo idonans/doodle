@@ -98,6 +98,7 @@ public class DoodleView extends FrameLayout {
      * 设置画布的背景色
      */
     public void setCanvasBackgroundColor(int color) {
+        setBackgroundColor(color);
         mRender.setCanvasBackgroundColor(color);
     }
 
