@@ -2,12 +2,14 @@ package com.idonans.app;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
+import com.idonans.doodle.DoodleData;
 import com.idonans.doodle.DoodleView;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.Pencil;
@@ -22,6 +24,8 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
     private View mSetBrush;
 
     private int mAspectType = 1;
+
+    private DoodleData mDoodleDataSaved;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -134,6 +138,21 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
     @Override
     public void setBrushType(int type) {
         // TODO
+    }
+
+    @Override
+    public void saveDoodleData() {
+        mDoodleView.save(new DoodleView.SaveDataActionCallback() {
+            @Override
+            public void onDataSaved(@Nullable DoodleData doodleData) {
+                mDoodleDataSaved = doodleData;
+            }
+        });
+    }
+
+    @Override
+    public void restoreDoodleData() {
+        mDoodleView.load(mDoodleDataSaved);
     }
 
 }

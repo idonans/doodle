@@ -28,6 +28,10 @@ public class BrushSettingFragment extends CommonFragment {
         void setBrushAlpha(int alpha);
 
         void setBrushType(int type);
+
+        void saveDoodleData();
+
+        void restoreDoodleData();
     }
 
     public static class SimpleBrushSettingListener implements BrushSettingListener {
@@ -49,6 +53,16 @@ public class BrushSettingFragment extends CommonFragment {
 
         @Override
         public void setBrushType(int type) {
+            // ignore
+        }
+
+        @Override
+        public void saveDoodleData() {
+            // ignore
+        }
+
+        @Override
+        public void restoreDoodleData() {
             // ignore
         }
     }
@@ -122,6 +136,24 @@ public class BrushSettingFragment extends CommonFragment {
                     }
                 });
             }
+        }
+
+        {
+            // save and restore
+            View save = ViewUtil.findViewByID(view, R.id.save);
+            save.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    getBrushSettingListener().saveDoodleData();
+                }
+            });
+            View restore = ViewUtil.findViewByID(view, R.id.restore);
+            restore.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    getBrushSettingListener().restoreDoodleData();
+                }
+            });
         }
     }
 
