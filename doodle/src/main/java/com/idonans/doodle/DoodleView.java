@@ -429,10 +429,11 @@ public class DoodleView extends FrameLayout {
             enqueue(new Runnable() {
                 @Override
                 public void run() {
+                    mAspectWidth = aspectWidth;
+                    mAspectHeight = aspectHeight;
+
                     if (mCanvasBuffer == null) {
                         // 画布还没有准备好
-                        mAspectWidth = aspectWidth;
-                        mAspectHeight = aspectHeight;
                         return;
                     }
 

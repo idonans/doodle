@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/content_panel"
     android:layout_width="match_parent"
@@ -8,6 +7,7 @@
     android:background="@color/material_grey_900"
     android:fitsSystemWindows="true"
     tools:context="com.idonans.app.MainActivity">
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -19,21 +19,30 @@
             android:layout_alignParentBottom="true"
             android:background="#ffffffff"
             android:orientation="horizontal">
+
             <Button
                 android:id="@+id/undo"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
-                android:text="undo"/>
+                android:text="undo" />
+
             <Button
                 android:id="@+id/redo"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
-                android:text="redo"/>
+                android:text="redo" />
+
             <Button
                 android:id="@+id/set_brush"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
-                android:text="设置画笔"/>
+                android:text="设置画笔" />
+
+            <Button
+                android:id="@+id/set_aspect"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="重置画布" />
         </LinearLayout>
 
         <com.idonans.doodle.DoodleView
@@ -41,6 +50,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_above="@id/doodle_action_panel"
-            android:background="#ff000000"/>
+            android:background="#ff000000" />
     </RelativeLayout>
 </FrameLayout>

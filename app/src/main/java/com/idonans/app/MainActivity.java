@@ -21,6 +21,8 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
     private View mRedo;
     private View mSetBrush;
 
+    private int mAspectType = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,6 +34,20 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         mDoodleActionPanel = ViewUtil.findViewByID(this, R.id.doodle_action_panel);
         mUndo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.undo);
         mRedo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.redo);
+
+        View viewSetAspect = ViewUtil.findViewByID(mDoodleActionPanel, R.id.set_aspect);
+        viewSetAspect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mAspectType == 1) {
+                    mAspectType = 0;
+                    mDoodleView.setAspectRatio(3, 4);
+                } else {
+                    mAspectType = 1;
+                    mDoodleView.setAspectRatio(1, 1);
+                }
+            }
+        });
 
         mUndo.setOnClickListener(new View.OnClickListener() {
             @Override
