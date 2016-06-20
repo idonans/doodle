@@ -82,6 +82,10 @@ public class DoodleView extends FrameLayout {
     private Brush mBrush;
 
     private void init() {
+        if (isInEditMode()) {
+            return;
+        }
+
         Context context = getContext();
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         layoutInflater.inflate(R.layout.doodle_layout, this, true);
