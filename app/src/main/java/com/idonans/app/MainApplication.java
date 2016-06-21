@@ -4,6 +4,7 @@ import android.app.Application;
 import android.util.Log;
 
 import com.idonans.acommon.App;
+import com.squareup.leakcanary.LeakCanary;
 
 /**
  * enter
@@ -14,6 +15,7 @@ public class MainApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        LeakCanary.install(this);
         App.init(new App.Config.Builder()
                 .setContext(this)
                 .setBuildConfigAdapter(new BuildConfigAdapterImpl())
