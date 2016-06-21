@@ -271,7 +271,7 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
-                    File file = FileUtil.createNewTmpFileQuietly("doodle", ".jpg", FileUtil.getPublicPictureDir());
+                    File file = FileUtil.createNewTmpFileQuietly("doodle", ".png", FileUtil.getPublicPictureDir());
                     if (file == null) {
                         showMessage("save to file... fail to create file");
                         return;
@@ -280,7 +280,7 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                     FileOutputStream fos = null;
                     try {
                         fos = new FileOutputStream(file);
-                        if (bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)) {
+                        if (bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)) {
                             showMessage("save to file... success " + file.getAbsolutePath());
                         } else {
                             showMessage("save to file... fail to save bitmap to file, compress false");
