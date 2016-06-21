@@ -418,7 +418,7 @@ public class DoodleView extends FrameLayout {
 
         private boolean mTextureEnable;
 
-        private int mCanvasBackgroundColor = Color.BLACK;
+        private int mCanvasBackgroundColor = Color.WHITE;
 
         /**
          * 所有与画布数据相关的操作都使用该队列处理， 如绘画手势（缩放和移动手势除外），刷新，undo, redo, 数据保存与恢复等。
