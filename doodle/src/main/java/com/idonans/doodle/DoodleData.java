@@ -16,7 +16,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 
 /**
- * 涂鸦板的数据，用于涂鸦板的保存和恢复，可用于加载其他涂鸦板的内容. ( json 格式)
+ * 涂鸦板的数据，用于涂鸦板的保存和恢复，可用于加载其他涂鸦板的内容.
  * Created by pengji on 16-6-20.
  */
 public class DoodleData {
