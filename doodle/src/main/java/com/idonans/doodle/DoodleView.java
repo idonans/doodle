@@ -92,6 +92,7 @@ public class DoodleView extends FrameLayout {
         mRender = new Render(getContext());
 
         mTextureView = ViewUtil.findViewByID(this, R.id.doodle_texture);
+        mTextureView.setOpaque(false);
         mTextureView.setSurfaceTextureListener(new TextureListener());
         mBrush = new Empty();
     }
@@ -498,7 +499,7 @@ public class DoodleView extends FrameLayout {
 
                     Bitmap bitmap = Bitmap.createBitmap(mCanvasBuffer.mBitmapWidth, mCanvasBuffer.mBitmapHeight, Bitmap.Config.ARGB_8888);
                     Canvas canvas = new Canvas(bitmap);
-                    mCanvasBuffer.draw(canvas);
+                    mCanvasBuffer.draw(clear(canvas));
                     callback.onSavedAsBitmap(bitmap);
                 }
             });
@@ -881,12 +882,10 @@ public class DoodleView extends FrameLayout {
                         return;
                     }
 
-                    // 清空背景
-                    clear(canvas);
-
                     // 将缓冲区中的内容绘画到 canvas 上
                     long timeStart = System.currentTimeMillis();
-                    canvasBuffer.draw(canvas);
+                    // 清空背景并重新绘制
+                    canvasBuffer.draw(clear(canvas));
                     long lastDrawingTime = System.currentTimeMillis() - timeStart;
                     canvasBuffer.setLastDrawingTime(lastDrawingTime);
                 } catch (Exception e) {
@@ -1305,8 +1304,7 @@ public class DoodleView extends FrameLayout {
             public void draw(Canvas canvas) {
                 CommonLog.d(TAG + " draw");
                 // 清空背景
-                clear(mBitmapCanvas);
-                mBitmapCanvas.drawColor(getCanvasBackgroundColor());
+                clear(mBitmapCanvas).drawColor(getCanvasBackgroundColor());
 
                 if (!restoreBuffer()) {
                     refreshBuffer();
@@ -1351,7 +1349,7 @@ public class DoodleView extends FrameLayout {
                     mDrawSteps.get(i).onDraw(mBitmapCanvas);
                     // 将当前的图像存储为一个关键帧
                     Bitmap bitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
-                    new Canvas(bitmap).drawBitmap(mBitmap, 0f, 0f, null);
+                    clear(new Canvas(bitmap)).drawBitmap(mBitmap, 0f, 0f, null);
                     FrameDrawStep frame = new FrameDrawStep(i, bitmap);
                     appendFrame(frame);
 
@@ -1382,7 +1380,7 @@ public class DoodleView extends FrameLayout {
                 if (saveFrame) {
                     // 将当前的图像存储为一个关键帧
                     Bitmap bitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
-                    new Canvas(bitmap).drawBitmap(mBitmap, 0f, 0f, null);
+                    clear(new Canvas(bitmap)).drawBitmap(mBitmap, 0f, 0f, null);
                     FrameDrawStep frame = new FrameDrawStep(drawStepSize - 2, bitmap);
                     appendFrame(frame);
                 }
@@ -1437,7 +1435,8 @@ public class DoodleView extends FrameLayout {
 
                 // 绘画最后一个关键帧 (最后一个关键帧之前的图像不必重新绘画)
                 if (f1 != null) {
-                    f1.onDraw(mBitmapCanvas);
+                    // 清空背景再绘画关键帧
+                    f1.onDraw(clear(mBitmapCanvas));
                 }
 
                 final int drawStepSize = mDrawSteps.size();
@@ -1472,7 +1471,7 @@ public class DoodleView extends FrameLayout {
                     } else {
                         lastFrameBitmap = Bitmap.createBitmap(mBitmapWidth, mBitmapHeight, Bitmap.Config.ARGB_8888);
                     }
-                    new Canvas(lastFrameBitmap).drawBitmap(mBitmap, 0f, 0f, null);
+                    clear(new Canvas(lastFrameBitmap)).drawBitmap(mBitmap, 0f, 0f, null);
                     FrameDrawStep latestFrame = new FrameDrawStep(drawStepSize - 2, lastFrameBitmap);
 
                     if (reuseLastFrame) {
@@ -1625,8 +1624,9 @@ public class DoodleView extends FrameLayout {
     /**
      * 清空画布，使之完全透明
      */
-    private static void clear(@NonNull Canvas canvas) {
+    private static Canvas clear(@NonNull Canvas canvas) {
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        return canvas;
     }
 
 }
