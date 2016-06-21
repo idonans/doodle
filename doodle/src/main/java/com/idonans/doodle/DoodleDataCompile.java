@@ -40,20 +40,6 @@ public class DoodleDataCompile {
     }
 
     /**
-     * 提取 doodle view 中的内容，转换为 DoodleData 对象， 如果转换失败，得到 null.
-     */
-    public static void saveSync(DoodleView doodleView, DoodleView.SaveDataActionCallback callback) {
-        if (doodleView == null || callback == null) {
-            if (callback != null) {
-                callback.onDataSaved(null);
-            }
-            return;
-        }
-
-        doodleView.save(callback);
-    }
-
-    /**
      * 将 DoodleData 对象序列化为 json ，如果失败，返回 null.
      */
     public static String toJson(DoodleData doodleData) {
