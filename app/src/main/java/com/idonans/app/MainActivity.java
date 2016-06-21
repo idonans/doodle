@@ -1,16 +1,22 @@
 package com.idonans.app;
 
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
+import com.idonans.acommon.AppContext;
 import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.data.StorageManager;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.lang.Threads;
+import com.idonans.acommon.util.FileUtil;
+import com.idonans.acommon.util.IOUtil;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleData;
 import com.idonans.doodle.DoodleDataCompile;
@@ -18,6 +24,9 @@ import com.idonans.doodle.DoodleView;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.Pencil;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.UUID;
 
 public class MainActivity extends CommonActivity implements BrushSettingFragment.BrushSettingListener {
@@ -198,6 +207,22 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         mDoodleView.load(mDoodleDataSaved);
     }
 
+    @Override
+    public void saveAsBitmap() {
+        mDoodleView.saveAsBitmap(new DoodleView.SaveAsBitmapCallback() {
+            @Override
+            public void onSavedAsBitmap(final Bitmap bitmap) {
+                if (bitmap == null) {
+                    Toast.makeText(AppContext.getContext(), " bitmap is null", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                Toast.makeText(AppContext.getContext(), "save to file...", Toast.LENGTH_SHORT).show();
+                SaveBitmapToFileAsyncTask.save(bitmap);
+            }
+        });
+    }
+
     private static class DoodleDataAsyncTask {
 
         public interface DoodleDataLoadCallback {
@@ -232,6 +257,52 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                             callback.onDoodleDataLoad(doodleData);
                         }
                     });
+                }
+            });
+        }
+
+    }
+
+    private static class SaveBitmapToFileAsyncTask {
+
+        private static final TaskQueue mTaskQueue = new TaskQueue(1);
+
+        public static void save(@NonNull final Bitmap bitmap) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    File file = FileUtil.createNewTmpFileQuietly("doodle", ".jpg", FileUtil.getPublicPictureDir());
+                    if (file == null) {
+                        showMessage("save to file... fail to create file");
+                        return;
+                    }
+
+                    FileOutputStream fos = null;
+                    try {
+                        fos = new FileOutputStream(file);
+                        if (bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)) {
+                            showMessage("save to file... success " + file.getAbsolutePath());
+                        } else {
+                            showMessage("save to file... fail to save bitmap to file, compress false");
+                            FileUtil.deleteFileQuietly(file);
+                        }
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                        showMessage("save to file... fail to save bitmap to file");
+                        FileUtil.deleteFileQuietly(file);
+                    } finally {
+                        IOUtil.closeQuietly(fos);
+                    }
+
+                }
+            });
+        }
+
+        private static void showMessage(final String message) {
+            Threads.runOnUi(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(AppContext.getContext(), message, Toast.LENGTH_SHORT).show();
                 }
             });
         }

@@ -32,6 +32,8 @@ public class BrushSettingFragment extends CommonFragment {
         void saveDoodleData();
 
         void restoreDoodleData();
+
+        void saveAsBitmap();
     }
 
     public static class SimpleBrushSettingListener implements BrushSettingListener {
@@ -63,6 +65,11 @@ public class BrushSettingFragment extends CommonFragment {
 
         @Override
         public void restoreDoodleData() {
+            // ignore
+        }
+
+        @Override
+        public void saveAsBitmap() {
             // ignore
         }
     }
@@ -152,6 +159,13 @@ public class BrushSettingFragment extends CommonFragment {
                 @Override
                 public void onClick(View v) {
                     getBrushSettingListener().restoreDoodleData();
+                }
+            });
+            View saveAsBitmap = ViewUtil.findViewByID(view, R.id.save_as_bitmap);
+            saveAsBitmap.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    getBrushSettingListener().saveAsBitmap();
                 }
             });
         }
