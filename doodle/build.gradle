@@ -25,7 +25,7 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
-    compile 'com.idonans.acommon:acommon:0.1.9'
+    compile 'com.idonans.acommon:acommon:0.1.10'
 }
 
 
