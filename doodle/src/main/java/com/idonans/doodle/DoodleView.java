@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.PorterDuff;
 import android.graphics.SurfaceTexture;
 import android.os.Build;
 import android.support.annotation.NonNull;
@@ -93,16 +94,12 @@ public class DoodleView extends FrameLayout {
         mTextureView = ViewUtil.findViewByID(this, R.id.doodle_texture);
         mTextureView.setSurfaceTextureListener(new TextureListener());
         mBrush = new Empty();
-
-        // sync canvas background color
-        setBackgroundColor(mRender.getCanvasBackgroundColor());
     }
 
     /**
-     * 设置画布的背景色
+     * 设置画布的背景色, argb
      */
     public void setCanvasBackgroundColor(int color) {
-        setBackgroundColor(color);
         mRender.setCanvasBackgroundColor(color);
     }
 
@@ -478,12 +475,7 @@ public class DoodleView extends FrameLayout {
                     mCanvasBuffer = createCanvasBuffer(
                             canvasBufferOld.mTextureWidth, canvasBufferOld.mTextureHeight,
                             doodleData);
-                    Threads.runOnUi(new Runnable() {
-                        @Override
-                        public void run() {
-                            DoodleView.this.setCanvasBackgroundColor(doodleData.backgroundColor);
-                        }
-                    });
+                    setCanvasBackgroundColor(doodleData.backgroundColor);
                 }
             });
         }
@@ -506,7 +498,6 @@ public class DoodleView extends FrameLayout {
 
                     Bitmap bitmap = Bitmap.createBitmap(mCanvasBuffer.mBitmapWidth, mCanvasBuffer.mBitmapHeight, Bitmap.Config.ARGB_8888);
                     Canvas canvas = new Canvas(bitmap);
-                    canvas.drawColor(getCanvasBackgroundColor());
                     mCanvasBuffer.draw(canvas);
                     callback.onSavedAsBitmap(bitmap);
                 }
@@ -891,7 +882,7 @@ public class DoodleView extends FrameLayout {
                     }
 
                     // 清空背景
-                    canvas.drawColor(getCanvasBackgroundColor());
+                    clear(canvas);
 
                     // 将缓冲区中的内容绘画到 canvas 上
                     long timeStart = System.currentTimeMillis();
@@ -1341,8 +1332,8 @@ public class DoodleView extends FrameLayout {
                 CommonLog.d(TAG + " restore frame");
 
                 // 绘画所有步骤，并且恢复所有关键帧
-                // 清空背景
-                mBitmapCanvas.drawColor(Color.WHITE);
+                // 绘制背景色
+                mBitmapCanvas.drawColor(getCanvasBackgroundColor());
 
                 // 参与关键帧绘画的步骤数量, 最后的这些步骤需要处理关键帧的绘制和保存
                 final int stepSizeInFrames = Math.min(drawStepSize, FRAMES_SIZE_MAX * FRAMES_STEP_INTERVAL_MAX);
@@ -1428,8 +1419,8 @@ public class DoodleView extends FrameLayout {
 
             // 重新绘制缓冲区
             private void refreshBuffer() {
-                // 清空背景
-                mBitmapCanvas.drawColor(Color.WHITE);
+                // 绘制背景色
+                mBitmapCanvas.drawColor(getCanvasBackgroundColor());
 
                 // 取目前关键帧中的最后两个关键帧
                 FrameDrawStep f1 = null; // 最后一个关键帧
@@ -1630,6 +1621,13 @@ public class DoodleView extends FrameLayout {
         public void onDraw(@NonNull Canvas canvas) {
             canvas.drawBitmap(mBitmap, 0f, 0f, null);
         }
+    }
+
+    /**
+     * 清空画布，使之完全透明
+     */
+    private static void clear(@NonNull Canvas canvas) {
+        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
     }
 
 }
