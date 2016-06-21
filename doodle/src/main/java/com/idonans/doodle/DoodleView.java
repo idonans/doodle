@@ -351,14 +351,12 @@ public class DoodleView extends FrameLayout {
     }
 
     public interface SaveAsBitmapCallback {
-        /**
-         * 如果画板是空的或者保存失败，bitmap is null.
-         */
         void onSavedAsBitmap(Bitmap bitmap);
     }
 
     /**
      * 在 ui 线程中回调，如果需要序列化保存 Bitmap, 需要使用异步方式.
+     * 如果画板是空的或者保存失败，bitmap is null.
      */
     public void saveAsBitmap(final SaveAsBitmapCallback callback) {
         if (callback == null) {
