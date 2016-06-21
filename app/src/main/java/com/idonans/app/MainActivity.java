@@ -9,6 +9,8 @@ import android.view.ViewGroup;
 import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.data.StorageManager;
 import com.idonans.acommon.lang.CommonLog;
+import com.idonans.acommon.lang.TaskQueue;
+import com.idonans.acommon.lang.Threads;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleData;
 import com.idonans.doodle.DoodleDataCompile;
@@ -37,24 +39,14 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
 
-        DoodleData doodleDataSaved = null;
         if (savedInstanceState != null) {
             mDoodleDataKey = savedInstanceState.getString(EXTRA_DOODLE_DATA_KEY);
-            if (mDoodleDataKey != null) {
-                String value = StorageManager.getInstance().getCache(mDoodleDataKey);
-                doodleDataSaved = DoodleDataCompile.valueOf(value);
-            }
         }
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
         mDoodleView.setBrush(new Pencil(Color.BLACK, 50, 255));
 
-        // restore doodle data
-        if (doodleDataSaved != null) {
-            mDoodleView.load(doodleDataSaved);
-        } else {
-            mDoodleView.setCanvasBackgroundColor(Color.YELLOW);
-        }
+        mDoodleView.setCanvasBackgroundColor(Color.YELLOW);
 
         mDoodleActionPanel = ViewUtil.findViewByID(this, R.id.doodle_action_panel);
         mUndo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.undo);
@@ -106,6 +98,18 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                 showBrushSetting();
             }
         });
+
+        // try load history
+        if (mDoodleDataKey != null) {
+            DoodleDataAsyncTask.load(mDoodleDataKey, new DoodleDataAsyncTask.DoodleDataLoadCallback() {
+                @Override
+                public void onDoodleDataLoad(DoodleData doodleData) {
+                    if (doodleData != null && isAvailable()) {
+                        mDoodleView.load(doodleData);
+                    }
+                }
+            });
+        }
     }
 
     private void disableDoodleAction() {
@@ -172,8 +176,7 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         mDoodleView.save(new DoodleView.SaveDataActionCallback() {
             @Override
             public void onDataSaved(@Nullable DoodleData doodleData) {
-                String json = DoodleDataCompile.toJson(doodleData);
-                StorageManager.getInstance().setCache(mDoodleDataKey, json);
+                DoodleDataAsyncTask.save(mDoodleDataKey, doodleData);
             }
         });
     }
@@ -193,6 +196,46 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
     @Override
     public void restoreDoodleData() {
         mDoodleView.load(mDoodleDataSaved);
+    }
+
+    private static class DoodleDataAsyncTask {
+
+        public interface DoodleDataLoadCallback {
+            void onDoodleDataLoad(DoodleData doodleData);
+        }
+
+        // 使用单任务队列确保 save & load 不会冲突
+        private static final TaskQueue mTaskQueue = new TaskQueue(1);
+
+        public static void save(final String key, final DoodleData doodleData) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    String json = DoodleDataCompile.toJson(doodleData);
+                    StorageManager.getInstance().setCache(key, json);
+                }
+            });
+        }
+
+        /**
+         * callback on ui thread
+         */
+        public static void load(final String key, final DoodleDataLoadCallback callback) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    String value = StorageManager.getInstance().getCache(key);
+                    final DoodleData doodleData = DoodleDataCompile.valueOf(value);
+                    Threads.runOnUi(new Runnable() {
+                        @Override
+                        public void run() {
+                            callback.onDoodleDataLoad(doodleData);
+                        }
+                    });
+                }
+            });
+        }
+
     }
 
 }
