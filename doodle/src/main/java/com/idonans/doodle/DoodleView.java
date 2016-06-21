@@ -1551,7 +1551,7 @@ public class DoodleView extends FrameLayout {
         private final Bitmap mBitmap; // 从0到该 draw step index (包含) 所有绘画步骤完成之后的图像
 
         public FrameDrawStep(int drawStepIndex, Bitmap bitmap) {
-            super((Brush) null);
+            super(null);
             mDrawStepIndex = drawStepIndex;
             mBitmap = bitmap;
         }
