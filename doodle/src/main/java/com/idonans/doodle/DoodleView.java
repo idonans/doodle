@@ -93,6 +93,9 @@ public class DoodleView extends FrameLayout {
         mTextureView = ViewUtil.findViewByID(this, R.id.doodle_texture);
         mTextureView.setSurfaceTextureListener(new TextureListener());
         mBrush = new Empty();
+
+        // sync canvas background color
+        setBackgroundColor(mRender.getCanvasBackgroundColor());
     }
 
     /**
