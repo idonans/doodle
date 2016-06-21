@@ -350,6 +350,36 @@ public class DoodleView extends FrameLayout {
         });
     }
 
+    public interface SaveAsBitmapCallback {
+        /**
+         * 如果画板是空的或者保存失败，bitmap is null.
+         */
+        void onSavedAsBitmap(Bitmap bitmap);
+    }
+
+    /**
+     * 在 ui 线程中回调，如果需要序列化保存 Bitmap, 需要使用异步方式.
+     */
+    public void saveAsBitmap(final SaveAsBitmapCallback callback) {
+        if (callback == null) {
+            return;
+        }
+
+        postShowLoading();
+        mRender.saveAsBitmap(new SaveAsBitmapCallback() {
+            @Override
+            public void onSavedAsBitmap(final Bitmap bitmap) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onSavedAsBitmap(bitmap);
+                        postHideLoading();
+                    }
+                });
+            }
+        });
+    }
+
     public interface SaveDataActionCallback {
         void onDataSaved(@Nullable DoodleData doodleData);
     }
@@ -457,6 +487,31 @@ public class DoodleView extends FrameLayout {
             });
         }
 
+        private void saveAsBitmap(@NonNull final SaveAsBitmapCallback callback) {
+            enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    if (mCanvasBuffer == null) {
+                        // 画布还没有准备好
+                        callback.onSavedAsBitmap(null);
+                        return;
+                    }
+
+                    if (!mCanvasBuffer.hasAnyNoneEmptyDrawStep(false)) {
+                        // 没有有效的绘画步骤，这是一张空白
+                        callback.onSavedAsBitmap(null);
+                        return;
+                    }
+
+                    Bitmap bitmap = Bitmap.createBitmap(mCanvasBuffer.mBitmapWidth, mCanvasBuffer.mBitmapHeight, Bitmap.Config.ARGB_8888);
+                    Canvas canvas = new Canvas(bitmap);
+                    canvas.drawColor(getCanvasBackgroundColor());
+                    mCanvasBuffer.draw(canvas);
+                    callback.onSavedAsBitmap(bitmap);
+                }
+            });
+        }
+
         private void save(@NonNull final SaveDataActionCallback callback) {
             enqueue(new Runnable() {
                 @Override
@@ -467,7 +522,7 @@ public class DoodleView extends FrameLayout {
                         return;
                     }
 
-                    if (!mCanvasBuffer.hasAnyNoneEmptyDrawStep()) {
+                    if (!mCanvasBuffer.hasAnyNoneEmptyDrawStep(true)) {
                         // 没有有效的绘画步骤，这是一张空白
                         callback.onDataSaved(null);
                         return;
@@ -957,6 +1012,7 @@ public class DoodleView extends FrameLayout {
             private final ArrayList<FrameDrawStep> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
             // 绘画步骤末尾可能至多存在一个 EmptyDrawStep, 用来标记上一个绘画步骤结束
             private final ArrayList<DrawStep> mDrawSteps = new ArrayList<>();
+            // redo 绘画步骤中不会有 EmptyDrawStep
             private final ArrayList<DrawStep> mDrawStepsRedo = new ArrayList<>();
 
             private final float mMaxScale;
@@ -1038,9 +1094,18 @@ public class DoodleView extends FrameLayout {
             }
 
             /**
-             * 是否有有效的绘画步骤 (不包含 redo 中的步骤)
+             * 涂鸦板中是否包含有效的绘画步骤.
+             *
+             * @param includeRedo 指定是否包含 redo 步骤
              */
-            public boolean hasAnyNoneEmptyDrawStep() {
+            public boolean hasAnyNoneEmptyDrawStep(boolean includeRedo) {
+                if (includeRedo) {
+                    // redo 中不会有空步骤 (EmptyDrawStep).
+                    if (mDrawStepsRedo.size() > 0) {
+                        return true;
+                    }
+                }
+
                 int size = mDrawSteps.size();
                 if (size <= 0) {
                     return false;
