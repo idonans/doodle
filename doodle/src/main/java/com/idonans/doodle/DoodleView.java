@@ -306,7 +306,8 @@ public class DoodleView extends FrameLayout {
     }
 
     /**
-     * 载入数据, 当前画板的 canvas 可能还没有初始化完成
+     * 载入数据, 当前画板的 canvas 可能还没有初始化完成.
+     * 这是一个异步载入的过程，期间会显示 loading 视图.
      */
     public void load(DoodleData doodleData) {
         if (doodleData == null) {
@@ -353,6 +354,9 @@ public class DoodleView extends FrameLayout {
         void onDataSaved(@Nullable DoodleData doodleData);
     }
 
+    /**
+     * 在 ui 线程中回调，如果需要序列化保存 DoodleData, 需要使用异步方式.
+     */
     public void save(final SaveDataActionCallback callback) {
         if (callback == null) {
             return;
