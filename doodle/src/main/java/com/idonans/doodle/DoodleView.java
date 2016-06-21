@@ -26,6 +26,7 @@ import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.lang.Threads;
 import com.idonans.acommon.util.DimenUtil;
+import com.idonans.acommon.util.MotionEventUtil;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.Empty;
