@@ -1304,6 +1304,10 @@ public class DoodleView extends FrameLayout {
 
             public void draw(Canvas canvas) {
                 CommonLog.d(TAG + " draw");
+                // 清空背景
+                clear(mBitmapCanvas);
+                mBitmapCanvas.drawColor(getCanvasBackgroundColor());
+
                 if (!restoreBuffer()) {
                     refreshBuffer();
                 }
@@ -1332,8 +1336,6 @@ public class DoodleView extends FrameLayout {
                 CommonLog.d(TAG + " restore frame");
 
                 // 绘画所有步骤，并且恢复所有关键帧
-                // 绘制背景色
-                mBitmapCanvas.drawColor(getCanvasBackgroundColor());
 
                 // 参与关键帧绘画的步骤数量, 最后的这些步骤需要处理关键帧的绘制和保存
                 final int stepSizeInFrames = Math.min(drawStepSize, FRAMES_SIZE_MAX * FRAMES_STEP_INTERVAL_MAX);
@@ -1419,9 +1421,6 @@ public class DoodleView extends FrameLayout {
 
             // 重新绘制缓冲区
             private void refreshBuffer() {
-                // 绘制背景色
-                mBitmapCanvas.drawColor(getCanvasBackgroundColor());
-
                 // 取目前关键帧中的最后两个关键帧
                 FrameDrawStep f1 = null; // 最后一个关键帧
                 FrameDrawStep f2 = null; // 倒数第二个关键帧
