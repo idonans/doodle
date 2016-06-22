@@ -53,7 +53,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
             if (doodleData.drawStepDatas != null) {
                 for (DoodleData.DrawStepData dsd : doodleData.drawStepDatas) {
                     // 渲染区标识
-                    writeLine("|-", bw);
+                    writeLine("DS", bw);
                     // write 步骤块
                     writeLine(dsd.type, bw);
                     if (dsd.points != null && !dsd.points.isEmpty()) {
@@ -67,7 +67,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                         }
                     }
                     // 步骤块结束
-                    writeLine("-", bw);
+                    writeLine("EOS", bw);
                     // write 笔刷块
                     if (dsd.brushData != null) {
                         writeLine(dsd.brushData.type, bw);
@@ -76,14 +76,14 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                         writeLine(dsd.brushData.alpha, bw);
                     }
                     // 笔刷块结束
-                    writeLine("--", bw);
+                    writeLine("EOB", bw);
                 }
             }
             // write redo 区数据块
             if (doodleData.drawStepDatasRedo != null) {
                 for (DoodleData.DrawStepData dsd : doodleData.drawStepDatasRedo) {
                     // redo 区标识
-                    writeLine("|--", bw);
+                    writeLine("DSR", bw);
                     // write 步骤块
                     writeLine(dsd.type, bw);
                     if (dsd.points != null && !dsd.points.isEmpty()) {
@@ -97,7 +97,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                         }
                     }
                     // 步骤块结束
-                    writeLine("-", bw);
+                    writeLine("EOS", bw);
                     // write 笔刷块
                     if (dsd.brushData != null) {
                         writeLine(dsd.brushData.type, bw);
@@ -106,12 +106,12 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                         writeLine(dsd.brushData.alpha, bw);
                     }
                     // 笔刷块结束
-                    writeLine("--", bw);
+                    writeLine("EOB", bw);
                 }
             }
 
             // 文件结束
-            writeLine("---", bw);
+            writeLine("EOD", bw);
 
             bw.flush();
             return true;
@@ -164,13 +164,13 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
             doodleData.drawStepDatasRedo = new ArrayList<>();
             do {
                 String flagLine = readTrueLine(br);
-                if ("---".equals(flagLine)) {
+                if ("EOD".equalsIgnoreCase(flagLine)) {
                     // 文件已经结束
                     return doodleData;
-                } else if ("|-".equals(flagLine)) {
+                } else if ("DS".equalsIgnoreCase(flagLine)) {
                     // 渲染区数据块
                     doodleData.drawStepDatas.add(readDrawStepData(br));
-                } else if ("|--".equals(flagLine)) {
+                } else if ("DSR".equalsIgnoreCase(flagLine)) {
                     // redo 区数据块
                     doodleData.drawStepDatasRedo.add(readDrawStepData(br));
                 } else {
@@ -207,7 +207,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
         do {
             String lineDrawStepPointOrEnd = readTrueLine(br);
             assert lineDrawStepPointOrEnd != null;
-            if ("-".equals(lineDrawStepPointOrEnd)) {
+            if ("EOS".equalsIgnoreCase(lineDrawStepPointOrEnd)) {
                 // 步骤结束
                 break;
             } else {
@@ -221,7 +221,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
         // 读取笔刷块
         String lineBrushTypeOrEnd = readTrueLine(br);
         assert lineBrushTypeOrEnd != null;
-        if (!"--".equals(lineBrushTypeOrEnd)) {
+        if (!"EOB".equalsIgnoreCase(lineBrushTypeOrEnd)) {
             DoodleData.BrushData brushData = new DoodleData.BrushData();
             int brushType = Integer.parseInt(lineBrushTypeOrEnd);
             if (brushType == DoodleData.BRUSH_TYPE_EMPTY) {
@@ -239,7 +239,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
 
             // 笔刷块结束标识
             String brushEndFlag = readTrueLine(br);
-            if (!"--".equals(brushEndFlag)) {
+            if (!"EOB".equalsIgnoreCase(brushEndFlag)) {
                 throw new IllegalArgumentException("brush end flag error " + brushEndFlag);
             }
             drawStepData.brushData = brushData;
