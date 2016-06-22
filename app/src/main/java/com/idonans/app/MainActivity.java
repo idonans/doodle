@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
@@ -240,6 +241,10 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                     // remove old
                     StorageManager.getInstance().setCache(key, null);
 
+                    if (doodleData == null) {
+                        return;
+                    }
+
                     File file = FileUtil.createNewTmpFileQuietly("doodle", ".dd", FileUtil.getPublicPictureDir());
                     if (file == null) {
                         showMessage("save to dd file... fail to create file");
@@ -265,6 +270,9 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                 @Override
                 public void run() {
                     String ddFilePath = StorageManager.getInstance().getCache(key);
+                    if (TextUtils.isEmpty(ddFilePath)) {
+                        return;
+                    }
 
                     final DoodleData doodleData;
                     int ddVersion = DoodleDataEditor.getVersion(ddFilePath);
