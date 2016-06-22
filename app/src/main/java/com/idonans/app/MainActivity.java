@@ -19,10 +19,11 @@ import com.idonans.acommon.util.FileUtil;
 import com.idonans.acommon.util.IOUtil;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleData;
-import com.idonans.doodle.DoodleDataCompile;
 import com.idonans.doodle.DoodleView;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.Pencil;
+import com.idonans.doodle.dd.DoodleDataEditor;
+import com.idonans.doodle.dd.v1.DoodleDataEditorV1;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -236,8 +237,22 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
-                    String json = DoodleDataCompile.toJson(doodleData);
-                    StorageManager.getInstance().setCache(key, json);
+                    // remove old
+                    StorageManager.getInstance().setCache(key, null);
+
+                    File file = FileUtil.createNewTmpFileQuietly("doodle", ".dd", FileUtil.getPublicPictureDir());
+                    if (file == null) {
+                        showMessage("save to dd file... fail to create file");
+                        return;
+                    }
+
+                    if (DoodleDataEditorV1.saveToFile(file.getAbsolutePath(), doodleData)) {
+                        StorageManager.getInstance().setCache(key, file.getAbsolutePath());
+                    } else {
+                        showMessage("save to dd file... fail to save");
+                        // save fail, delete tmp file
+                        FileUtil.deleteFileQuietly(file);
+                    }
                 }
             });
         }
@@ -249,8 +264,19 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
-                    String value = StorageManager.getInstance().getCache(key);
-                    final DoodleData doodleData = DoodleDataCompile.valueOf(value);
+                    String ddFilePath = StorageManager.getInstance().getCache(key);
+
+                    final DoodleData doodleData;
+                    int ddVersion = DoodleDataEditor.getVersion(ddFilePath);
+                    if (ddVersion == -1) {
+                        showMessage("dd 文件已被破坏");
+                        doodleData = null;
+                    } else if (ddVersion != 1) {
+                        showMessage("dd 文件版本不支持");
+                        doodleData = null;
+                    } else {
+                        doodleData = DoodleDataEditorV1.readFromFile(ddFilePath);
+                    }
                     Threads.runOnUi(new Runnable() {
                         @Override
                         public void run() {
@@ -293,20 +319,19 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                     } finally {
                         IOUtil.closeQuietly(fos);
                     }
-
                 }
             });
         }
 
-        private static void showMessage(final String message) {
-            Threads.runOnUi(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(AppContext.getContext(), message, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
+    }
 
+    private static void showMessage(final String message) {
+        Threads.runOnUi(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(AppContext.getContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
 }

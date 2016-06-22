@@ -22,16 +22,6 @@ import java.util.ArrayList;
 public class DoodleData {
 
     /**
-     * 第一个版本
-     */
-    public static final int VERSION_1 = 1;
-
-    /**
-     * 涂鸦板数据的版本, 不同版本之间的数据不兼容 (可以借助转换将数据在不同版本之间复制)
-     */
-    public int version = VERSION_1;
-
-    /**
      * 图像的宽度
      */
     public int width;
@@ -48,10 +38,6 @@ public class DoodleData {
 
     public ArrayList<DrawStepData> drawStepDatas;
     public ArrayList<DrawStepData> drawStepDatasRedo;
-
-    public static boolean isVersionSupport(int version) {
-        return version == VERSION_1;
-    }
 
     public void setBackgroundColor(int backgroundColor) {
         this.backgroundColor = backgroundColor;
