@@ -120,6 +120,16 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                     }
                 }
             });
+        } else {
+            // for test load dd file
+            DoodleDataAsyncTask.loadDdFile("doodle1466581651277.dd", new DoodleDataAsyncTask.DoodleDataLoadCallback() {
+                @Override
+                public void onDoodleDataLoad(DoodleData doodleData) {
+                    if (doodleData != null && isAvailable()) {
+                        mDoodleView.load(doodleData);
+                    }
+                }
+            });
         }
     }
 
@@ -273,6 +283,43 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                     if (TextUtils.isEmpty(ddFilePath)) {
                         return;
                     }
+
+                    final DoodleData doodleData;
+                    int ddVersion = DoodleDataEditor.getVersion(ddFilePath);
+                    if (ddVersion == -1) {
+                        showMessage("dd 文件已被破坏");
+                        doodleData = null;
+                    } else if (ddVersion != 1) {
+                        showMessage("dd 文件版本不支持");
+                        doodleData = null;
+                    } else {
+                        doodleData = DoodleDataEditorV1.readFromFile(ddFilePath);
+                    }
+                    Threads.runOnUi(new Runnable() {
+                        @Override
+                        public void run() {
+                            callback.onDoodleDataLoad(doodleData);
+                        }
+                    });
+                }
+            });
+        }
+
+        /**
+         * callback on ui thread
+         */
+        public static void loadDdFile(final String fileName, final DoodleDataLoadCallback callback) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    File dir = FileUtil.getPublicPictureDir();
+                    if (dir == null) {
+                        showMessage("fail to get public picture dir (null)");
+                        return;
+                    }
+
+                    File file = new File(dir, fileName);
+                    String ddFilePath = file.getAbsolutePath();
 
                     final DoodleData doodleData;
                     int ddVersion = DoodleDataEditor.getVersion(ddFilePath);
