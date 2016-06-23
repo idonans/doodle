@@ -259,9 +259,6 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
-                    // remove old
-                    StorageManager.getInstance().setCache(key, null);
-
                     if (doodleData == null) {
                         return;
                     }
