@@ -189,6 +189,9 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
 
         if (mDoodleDataKey == null) {
             mDoodleDataKey = UUID.randomUUID().toString();
+        } else {
+            // 删除上一次保存的临时数据
+            DoodleDataAsyncTask.remove(mDoodleDataKey);
         }
         outState.putString(EXTRA_DOODLE_DATA_KEY, mDoodleDataKey);
 
@@ -233,6 +236,16 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        CommonLog.d(TAG + " onDestroy");
+        super.onDestroy();
+        // 正常结束时删除可能存在的临时文件
+        if (mDoodleDataKey != null) {
+            DoodleDataAsyncTask.remove(mDoodleDataKey);
+        }
+    }
+
     private static class DoodleDataAsyncTask {
 
         public interface DoodleDataLoadCallback {
@@ -270,6 +283,17 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
             });
         }
 
+        public static void remove(final String key) {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    String ddFilePath = StorageManager.getInstance().getCache(key);
+                    StorageManager.getInstance().setCache(key, null);
+                    FileUtil.deleteFileQuietly(ddFilePath);
+                }
+            });
+        }
+
         /**
          * callback on ui thread
          */
@@ -293,6 +317,7 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
                     } else {
                         doodleData = DoodleDataEditorV1.readFromFile(ddFilePath);
                     }
+
                     Threads.runOnUi(new Runnable() {
                         @Override
                         public void run() {
