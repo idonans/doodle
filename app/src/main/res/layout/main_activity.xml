@@ -50,6 +50,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_above="@id/doodle_action_panel"
-            android:background="@drawable/leak_canary_icon"/>
+            android:background="#FF323232"/>
     </RelativeLayout>
 </FrameLayout>

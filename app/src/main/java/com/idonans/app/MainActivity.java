@@ -57,8 +57,6 @@ public class MainActivity extends CommonActivity implements BrushSettingFragment
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
         mDoodleView.setBrush(new Pencil(Color.BLACK, 50, 255));
 
-        mDoodleView.setCanvasBackgroundColor(0x55ffff00);
-
         mDoodleActionPanel = ViewUtil.findViewByID(this, R.id.doodle_action_panel);
         mUndo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.undo);
         mRedo = ViewUtil.findViewByID(mDoodleActionPanel, R.id.redo);
