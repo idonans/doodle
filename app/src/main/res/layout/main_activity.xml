@@ -142,7 +142,7 @@
             android:clickable="true">
         </View>
 
-        <RelativeLayout
+        <LinearLayout
             android:id="@+id/action_panel_more"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -156,6 +156,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="save"/>
-        </RelativeLayout>
+
+            <Button
+                android:id="@+id/brush_pencil"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="铅笔"/>
+
+            <Button
+                android:id="@+id/brush_leaves"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="柳叶笔"/>
+        </LinearLayout>
     </RelativeLayout>
 </FrameLayout>

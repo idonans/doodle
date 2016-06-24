@@ -55,8 +55,8 @@ public class MainActivity extends CommonActivity {
             }
 
             @Override
-            public void onSizeAlphaColorChanged() {
-                // TODO change current brush size, alpha, color.
+            public void onBrushChanged() {
+                mDoodleView.setBrush(mDoodleActionPanel.createBrush());
             }
         });
 

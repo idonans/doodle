@@ -9,7 +9,12 @@ import android.widget.TextView;
 
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
+import com.idonans.doodle.DoodleData;
 import com.idonans.doodle.DoodleView;
+import com.idonans.doodle.brush.Brush;
+import com.idonans.doodle.brush.Empty;
+import com.idonans.doodle.brush.LeavesPencil;
+import com.idonans.doodle.brush.Pencil;
 
 /**
  * Created by pengji on 16-6-24.
@@ -40,9 +45,11 @@ public class DoodleActionPanel {
     private static final String EXTRA_SIZE = "doodle_action_panel_size";
     private static final String EXTRA_ALPHA = "doodle_action_panel_alpha";
     private static final String EXTRA_COLOR = "doodle_action_panel_color";
+    private static final String EXTRA_BRUSH_TYPE = "doodle_action_panel_brush_type";
     private float mSize;
     private int mAlpha;
     private int mColor;
+    private int mBrushType;
 
     private static final ActionListener EMPTY_ACTION_LISTENER = new SimpleActionListener();
     private ActionListener mActionListener;
@@ -50,7 +57,7 @@ public class DoodleActionPanel {
     public interface ActionListener {
         void saveAsBitmap();
 
-        void onSizeAlphaColorChanged();
+        void onBrushChanged();
     }
 
     DoodleActionPanel(View rootView, Bundle savedInstanceState) {
@@ -189,6 +196,10 @@ public class DoodleActionPanel {
         return mColor;
     }
 
+    public int getBrushType() {
+        return mBrushType;
+    }
+
     @NonNull
     public ActionListener getActionListener() {
         ActionListener listener = mActionListener;
@@ -202,25 +213,28 @@ public class DoodleActionPanel {
         float size = 10;
         int alpha = 255;
         int color = Color.BLACK;
+        int brushType = DoodleData.BRUSH_TYPE_EMPTY;
 
         if (savedInstanceState != null) {
             size = savedInstanceState.getFloat(EXTRA_SIZE, size);
             alpha = savedInstanceState.getInt(EXTRA_ALPHA, alpha);
             color = savedInstanceState.getInt(EXTRA_COLOR, color);
+            brushType = savedInstanceState.getInt(EXTRA_COLOR, brushType);
         }
         mSize = size;
         mAlpha = alpha;
         mColor = color;
-        notifySizeAlphaColorChanged();
+        mBrushType = brushType;
+        notifyBrushChanged();
     }
 
-    private void notifySizeAlphaColorChanged() {
-        syncSizeAlphaColorView();
-        getActionListener().onSizeAlphaColorChanged();
+    private void notifyBrushChanged() {
+        syncBrushView();
+        getActionListener().onBrushChanged();
     }
 
-    // set current value to view
-    private void syncSizeAlphaColorView() {
+    // show current brush state with view
+    private void syncBrushView() {
         mSizeView.setText(String.valueOf(mSize));
         mSizeSeekBar.setProgress((int) mSize);
         mAlphaView.setText(String.valueOf(mAlpha));
@@ -240,7 +254,7 @@ public class DoodleActionPanel {
 
     private void adjustSizeTo(float size) {
         mSize = trimSize(size);
-        notifySizeAlphaColorChanged();
+        notifyBrushChanged();
     }
 
     private void adjustSizeBy(float dSize) {
@@ -259,11 +273,27 @@ public class DoodleActionPanel {
 
     private void adjustAlphaTo(int alpha) {
         mAlpha = trimAlpha(alpha);
-        notifySizeAlphaColorChanged();
+        notifyBrushChanged();
     }
 
     private void adjustAlphaBy(int dAlpha) {
         adjustAlphaTo(mAlpha + dAlpha);
+    }
+
+    private void adjustBrushTypeTo(int brushType) {
+        mBrushType = brushType;
+        notifyBrushChanged();
+    }
+
+    Brush createBrush() {
+        if (mBrushType == DoodleData.BRUSH_TYPE_EMPTY) {
+            return new Empty();
+        } else if (mBrushType == DoodleData.BRUSH_TYPE_LEAVES) {
+            return new LeavesPencil(mColor, mSize, mAlpha);
+        } else if (mBrushType == DoodleData.BRUSH_TYPE_PENCIL) {
+            return new Pencil(mColor, mSize, mAlpha);
+        }
+        throw new IllegalArgumentException("error brush type:" + mBrushType);
     }
 
     private static int removeAlpha(int color) {
@@ -274,6 +304,7 @@ public class DoodleActionPanel {
         outState.putFloat(EXTRA_SIZE, mSize);
         outState.putInt(EXTRA_ALPHA, mAlpha);
         outState.putInt(EXTRA_COLOR, mColor);
+        outState.putInt(EXTRA_BRUSH_TYPE, mBrushType);
     }
 
     private void disableDoodleAction() {
@@ -301,6 +332,8 @@ public class DoodleActionPanel {
         private final View mMoreOutsideTouch;
         private final View mMorePanelView;
         private final View mSave;
+        private final View mBrushPencil;
+        private final View mBrushLeaves;
 
         private MorePanel(View rootView) {
             mMoreOutsideTouch = ViewUtil.findViewByID(rootView, R.id.action_panel_more_touch_outside);
@@ -316,6 +349,20 @@ public class DoodleActionPanel {
                 @Override
                 public void onClick(View view) {
                     getActionListener().saveAsBitmap();
+                }
+            });
+            mBrushPencil = ViewUtil.findViewByID(mMorePanelView, R.id.brush_pencil);
+            mBrushPencil.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    adjustBrushTypeTo(DoodleData.BRUSH_TYPE_PENCIL);
+                }
+            });
+            mBrushLeaves = ViewUtil.findViewByID(mMorePanelView, R.id.brush_leaves);
+            mBrushLeaves.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    adjustBrushTypeTo(DoodleData.BRUSH_TYPE_LEAVES);
                 }
             });
         }
@@ -340,8 +387,7 @@ public class DoodleActionPanel {
         }
 
         @Override
-        public void onSizeAlphaColorChanged() {
-            // ignore
+        public void onBrushChanged() {
         }
 
     }
