@@ -95,7 +95,7 @@ public class DoodleActionPanel {
         mSizeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (!fromUser) {
+                if (fromUser) {
                     adjustSizeTo(progress);
                 }
             }
@@ -120,6 +120,24 @@ public class DoodleActionPanel {
             @Override
             public void onClick(View view) {
                 adjustAlphaBy(1);
+            }
+        });
+        mAlphaSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    adjustAlphaTo(progress);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
             }
         });
         mMore.setOnClickListener(new View.OnClickListener() {
