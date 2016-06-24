@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.view.View;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.idonans.acommon.lang.CommonLog;
@@ -20,9 +21,11 @@ public class DoodleActionPanel {
     private final View mSizeDown;
     private final View mSizeUp;
     private final TextView mSizeView;
+    private final SeekBar mSizeSeekBar;
     private final View mAlphaDown;
     private final View mAlphaUp;
     private final TextView mAlphaView;
+    private final SeekBar mAlphaSeekBar;
     private final View mUndo;
     private final View mRedo;
     private final TextView mSelectColor;
@@ -55,11 +58,15 @@ public class DoodleActionPanel {
         mSizeDown = ViewUtil.findViewByID(sizePanel, R.id.size_down);
         mSizeUp = ViewUtil.findViewByID(sizePanel, R.id.size_up);
         mSizeView = ViewUtil.findViewByID(sizePanel, R.id.size_view);
+        mSizeSeekBar = ViewUtil.findViewByID(sizePanel, R.id.size_seekbar);
+        mSizeSeekBar.setMax((int) MAX_SIZE);
 
         View alphaPanel = ViewUtil.findViewByID(doodlePanelView, R.id.alpha_panel);
         mAlphaDown = ViewUtil.findViewByID(alphaPanel, R.id.alpha_down);
         mAlphaUp = ViewUtil.findViewByID(alphaPanel, R.id.alpha_up);
         mAlphaView = ViewUtil.findViewByID(alphaPanel, R.id.alpha_view);
+        mAlphaSeekBar = ViewUtil.findViewByID(alphaPanel, R.id.alpha_seekbar);
+        mAlphaSeekBar.setMax(MAX_ALPHA);
 
         View actionPanel = ViewUtil.findViewByID(doodlePanelView, R.id.action_panel);
         mUndo = ViewUtil.findViewByID(actionPanel, R.id.undo);
@@ -154,10 +161,19 @@ public class DoodleActionPanel {
         mSize = size;
         mAlpha = alpha;
         mColor = color;
+        notifySizeAlphaColorChanged();
+    }
 
-        // set current value to view
+    private void notifySizeAlphaColorChanged() {
+        syncSizeAlphaColorView();
+    }
+
+    // set current value to view
+    private void syncSizeAlphaColorView() {
         mSizeView.setText(String.valueOf(mSize));
+        mSizeSeekBar.setProgress((int) mSize);
         mAlphaView.setText(String.valueOf(mAlpha));
+        mAlphaSeekBar.setProgress(mAlpha);
         mSelectColor.setTextColor(removeAlpha(mColor));
     }
 
@@ -173,6 +189,7 @@ public class DoodleActionPanel {
 
     private void adjustSize(float dSize) {
         mSize = trimSize(mSize + dSize);
+        notifySizeAlphaColorChanged();
     }
 
     private int trimAlpha(int alpha) {
@@ -187,6 +204,7 @@ public class DoodleActionPanel {
 
     private void adjustAlpha(int dAlpha) {
         mAlpha = trimAlpha(mAlpha + dAlpha);
+        notifySizeAlphaColorChanged();
     }
 
     private static int removeAlpha(int color) {
