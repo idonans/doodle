@@ -53,6 +53,11 @@ public class MainActivity extends CommonActivity {
             public void saveAsBitmap() {
                 MainActivity.this.saveAsBitmap();
             }
+
+            @Override
+            public void onSizeAlphaColorChanged() {
+                // TODO change current brush size, alpha, color.
+            }
         });
 
         // try load history

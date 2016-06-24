@@ -49,6 +49,8 @@ public class DoodleActionPanel {
 
     public interface ActionListener {
         void saveAsBitmap();
+
+        void onSizeAlphaColorChanged();
     }
 
     DoodleActionPanel(View rootView, Bundle savedInstanceState) {
@@ -81,25 +83,43 @@ public class DoodleActionPanel {
         mSizeDown.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                adjustSize(-1);
+                adjustSizeBy(-1);
             }
         });
         mSizeUp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                adjustSize(1);
+                adjustSizeBy(1);
+            }
+        });
+        mSizeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser) {
+                    adjustSizeTo(progress);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // ignore
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // ignore
             }
         });
         mAlphaDown.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                adjustAlpha(-1);
+                adjustAlphaBy(-1);
             }
         });
         mAlphaUp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                adjustAlpha(1);
+                adjustAlphaBy(1);
             }
         });
         mMore.setOnClickListener(new View.OnClickListener() {
@@ -139,6 +159,18 @@ public class DoodleActionPanel {
         mActionListener = actionListener;
     }
 
+    public float getSize() {
+        return mSize;
+    }
+
+    public int getAlpha() {
+        return mAlpha;
+    }
+
+    public int getColor() {
+        return mColor;
+    }
+
     @NonNull
     public ActionListener getActionListener() {
         ActionListener listener = mActionListener;
@@ -166,6 +198,7 @@ public class DoodleActionPanel {
 
     private void notifySizeAlphaColorChanged() {
         syncSizeAlphaColorView();
+        getActionListener().onSizeAlphaColorChanged();
     }
 
     // set current value to view
@@ -187,9 +220,13 @@ public class DoodleActionPanel {
         return size;
     }
 
-    private void adjustSize(float dSize) {
-        mSize = trimSize(mSize + dSize);
+    private void adjustSizeTo(float size) {
+        mSize = trimSize(size);
         notifySizeAlphaColorChanged();
+    }
+
+    private void adjustSizeBy(float dSize) {
+        adjustSizeTo(mSize + dSize);
     }
 
     private int trimAlpha(int alpha) {
@@ -202,9 +239,13 @@ public class DoodleActionPanel {
         return alpha;
     }
 
-    private void adjustAlpha(int dAlpha) {
-        mAlpha = trimAlpha(mAlpha + dAlpha);
+    private void adjustAlphaTo(int alpha) {
+        mAlpha = trimAlpha(alpha);
         notifySizeAlphaColorChanged();
+    }
+
+    private void adjustAlphaBy(int dAlpha) {
+        adjustAlphaTo(mAlpha + dAlpha);
     }
 
     private static int removeAlpha(int color) {
@@ -277,6 +318,11 @@ public class DoodleActionPanel {
 
         @Override
         public void saveAsBitmap() {
+            // ignore
+        }
+
+        @Override
+        public void onSizeAlphaColorChanged() {
             // ignore
         }
 
