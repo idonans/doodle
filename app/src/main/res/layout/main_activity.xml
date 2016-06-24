@@ -15,34 +15,117 @@
         <LinearLayout
             android:id="@+id/doodle_action_panel"
             android:layout_width="match_parent"
-            android:layout_height="45dp"
+            android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:background="#ffffffff"
-            android:orientation="horizontal">
+            android:background="#FFffffff"
+            android:orientation="vertical">
 
-            <Button
-                android:id="@+id/undo"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="undo"/>
+            <RelativeLayout
+                android:id="@+id/size_panel"
+                android:layout_width="match_parent"
+                android:layout_height="50dp">
 
-            <Button
-                android:id="@+id/redo"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="redo"/>
+                <Button
+                    android:id="@+id/size_down"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="-"/>
 
-            <Button
-                android:id="@+id/set_brush"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="设置画笔"/>
+                <Button
+                    android:id="@+id/size_up"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentRight="true"
+                    android:text="+"/>
 
-            <Button
-                android:id="@+id/set_aspect"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="重置画布"/>
+                <TextView
+                    android:id="@+id/size_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toLeftOf="@id/size_up"
+                    android:layout_toRightOf="@id/size_down"
+                    android:gravity="center"
+                    android:text="20"/>
+
+                <SeekBar
+                    android:id="@+id/size_seekbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentBottom="true"
+                    android:layout_toLeftOf="@id/size_up"
+                    android:layout_toRightOf="@id/size_down"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/alpha_panel"
+                android:layout_width="match_parent"
+                android:layout_height="50dp">
+
+                <Button
+                    android:id="@+id/alpha_down"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="-"/>
+
+                <Button
+                    android:id="@+id/alpha_up"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentRight="true"
+                    android:text="+"/>
+
+                <TextView
+                    android:id="@+id/alpha_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toLeftOf="@id/alpha_up"
+                    android:layout_toRightOf="@id/alpha_down"
+                    android:gravity="center"
+                    android:text="20"/>
+
+                <SeekBar
+                    android:id="@+id/alpha_seekbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentBottom="true"
+                    android:layout_toLeftOf="@id/alpha_up"
+                    android:layout_toRightOf="@id/alpha_down"/>
+            </RelativeLayout>
+
+            <LinearLayout
+                android:id="@+id/action_panel"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/undo"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="&lt;"/>
+
+                <Button
+                    android:id="@+id/redo"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="&gt;"/>
+
+                <Button
+                    android:id="@+id/select_color"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="color"/>
+
+                <Button
+                    android:id="@+id/more"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="more"/>
+            </LinearLayout>
         </LinearLayout>
 
         <com.idonans.doodle.DoodleView
@@ -51,5 +134,28 @@
             android:layout_height="match_parent"
             android:layout_above="@id/doodle_action_panel"
             android:background="#FF323232"/>
+
+        <View
+            android:id="@+id/action_panel_more_touch_outside"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="true">
+        </View>
+
+        <RelativeLayout
+            android:id="@+id/action_panel_more"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@id/doodle_view"
+            android:layout_alignRight="@id/doodle_view"
+            android:background="#A0000000"
+            android:clickable="true">
+
+            <Button
+                android:id="@+id/save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="save"/>
+        </RelativeLayout>
     </RelativeLayout>
 </FrameLayout>
