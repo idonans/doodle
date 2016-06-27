@@ -71,6 +71,9 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
             }
         });
 
+        // init brush
+        mDoodleView.setBrush(mDoodleActionPanel.createBrush());
+
         // try load history
         if (mDoodleDataKey != null) {
             DoodleDataAsyncTask.load(mDoodleDataKey, new DoodleDataAsyncTask.DoodleDataLoadCallback() {

@@ -247,7 +247,7 @@ public class DoodleActionPanel {
         int size = 10;
         int alpha = 255;
         int color = Color.BLACK;
-        int brushType = DoodleData.BRUSH_TYPE_EMPTY;
+        int brushType = DoodleData.BRUSH_TYPE_PENCIL;
 
         if (savedInstanceState != null) {
             size = savedInstanceState.getInt(EXTRA_SIZE, size);
