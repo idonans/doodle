@@ -8,7 +8,7 @@ import android.graphics.Paint;
  */
 public class LeavesPencil extends Pencil {
 
-    public LeavesPencil(int color, float size, int alpha) {
+    public LeavesPencil(int color, int size, int alpha) {
         super(color, size, alpha);
     }
 
@@ -18,7 +18,7 @@ public class LeavesPencil extends Pencil {
     }
 
     @Override
-    public Brush cloneWithSize(float size) {
+    public Brush cloneWithSize(int size) {
         return new LeavesPencil(color, size, alpha);
     }
 

@@ -142,7 +142,7 @@ public class DoodleData {
          * argb or rgb
          */
         public int color;
-        public float size;
+        public int size;
         /**
          * 画刷的透明度 [0, 255], 值越大越不透明
          */

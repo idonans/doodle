@@ -14,7 +14,7 @@ import com.idonans.doodle.drawstep.ScribbleDrawStep;
  */
 public class Pencil extends Brush {
 
-    public Pencil(int color, float size, int alpha) {
+    public Pencil(int color, int size, int alpha) {
         super(color, size, alpha);
     }
 
@@ -24,7 +24,7 @@ public class Pencil extends Brush {
     }
 
     @Override
-    public Brush cloneWithSize(float size) {
+    public Brush cloneWithSize(int size) {
         return new Pencil(color, size, alpha);
     }
 

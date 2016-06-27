@@ -13,7 +13,7 @@ import com.idonans.doodle.drawstep.DrawStep;
 public final class Empty extends Brush {
 
     public Empty() {
-        super(0, 0f, 0);
+        super(0, 0, 0);
     }
 
     @Override
@@ -22,7 +22,7 @@ public final class Empty extends Brush {
     }
 
     @Override
-    public Brush cloneWithSize(float size) {
+    public Brush cloneWithSize(int size) {
         return this;
     }
 

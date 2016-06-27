@@ -234,7 +234,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                 throw new IllegalArgumentException("brush type not support " + brushType);
             }
             brushData.color = Integer.parseInt(readTrueLine(br));
-            brushData.size = Float.parseFloat(readTrueLine(br));
+            brushData.size = Integer.parseInt(readTrueLine(br));
             brushData.alpha = Integer.parseInt(readTrueLine(br));
 
             // 笔刷块结束标识

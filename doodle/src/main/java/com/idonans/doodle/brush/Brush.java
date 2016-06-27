@@ -22,14 +22,14 @@ public abstract class Brush {
     /**
      * 画刷的大小
      */
-    public final float size;
+    public final int size;
 
     /**
      * 画刷的透明度 [0, 255], 值越大越不透明
      */
     public final int alpha;
 
-    public Brush(int color, float size, int alpha) {
+    public Brush(int color, int size, int alpha) {
         this.color = color;
         this.size = size;
         this.alpha = alpha;
@@ -43,7 +43,7 @@ public abstract class Brush {
     /**
      * 使用新的 size 克隆一个新的画笔, 通常不能返回当前对象
      */
-    public abstract Brush cloneWithSize(float size);
+    public abstract Brush cloneWithSize(int size);
 
     /**
      * 使用新的透明度克隆一个新的画笔, 通常不能返回当前对象

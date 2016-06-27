@@ -38,15 +38,15 @@ public class DoodleActionPanel {
 
     private final MorePanel mMorePanel;
 
-    private static final float MIN_SIZE = 0f;
-    private static final float MAX_SIZE = 200f;
+    private static final int MIN_SIZE = 0;
+    private static final int MAX_SIZE = 200;
     private static final int MIN_ALPHA = 0;
     private static final int MAX_ALPHA = 255;
     private static final String EXTRA_SIZE = "doodle_action_panel_size";
     private static final String EXTRA_ALPHA = "doodle_action_panel_alpha";
     private static final String EXTRA_COLOR = "doodle_action_panel_color";
     private static final String EXTRA_BRUSH_TYPE = "doodle_action_panel_brush_type";
-    private float mSize;
+    private int mSize;
     private int mAlpha;
     private int mColor;
     private int mBrushType;
@@ -213,13 +213,13 @@ public class DoodleActionPanel {
     }
 
     private void restoreSavedState(Bundle savedInstanceState) {
-        float size = 10;
+        int size = 10;
         int alpha = 255;
         int color = Color.BLACK;
         int brushType = DoodleData.BRUSH_TYPE_EMPTY;
 
         if (savedInstanceState != null) {
-            size = savedInstanceState.getFloat(EXTRA_SIZE, size);
+            size = savedInstanceState.getInt(EXTRA_SIZE, size);
             alpha = savedInstanceState.getInt(EXTRA_ALPHA, alpha);
             color = savedInstanceState.getInt(EXTRA_COLOR, color);
             brushType = savedInstanceState.getInt(EXTRA_COLOR, brushType);
@@ -239,13 +239,13 @@ public class DoodleActionPanel {
     // show current brush state with view
     private void syncBrushView() {
         mSizeView.setText(String.valueOf(mSize));
-        mSizeSeekBar.setProgress((int) mSize);
+        mSizeSeekBar.setProgress(mSize);
         mAlphaView.setText(String.valueOf(mAlpha));
         mAlphaSeekBar.setProgress(mAlpha);
         mSelectColor.setTextColor(removeAlpha(mColor));
     }
 
-    private float trimSize(float size) {
+    private int trimSize(int size) {
         if (size < MIN_SIZE) {
             size = MIN_SIZE;
         }
@@ -255,12 +255,12 @@ public class DoodleActionPanel {
         return size;
     }
 
-    private void adjustSizeTo(float size) {
+    private void adjustSizeTo(int size) {
         mSize = trimSize(size);
         notifyBrushChanged();
     }
 
-    private void adjustSizeBy(float dSize) {
+    private void adjustSizeBy(int dSize) {
         adjustSizeTo(mSize + dSize);
     }
 
