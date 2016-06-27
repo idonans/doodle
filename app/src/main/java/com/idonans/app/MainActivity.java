@@ -49,7 +49,7 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
 
-        mDoodleActionPanel = new DoodleActionPanel(getWindow().getDecorView(), savedInstanceState);
+        mDoodleActionPanel = new DoodleActionPanel(this, savedInstanceState);
         mDoodleActionPanel.attach(mDoodleView);
         mDoodleActionPanel.setActionListener(new DoodleActionPanel.SimpleActionListener() {
             @Override

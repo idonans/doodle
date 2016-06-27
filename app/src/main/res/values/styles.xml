@@ -7,4 +7,10 @@
     <style name="BaseAppTheme.AppCompat"></style>
 
     <style name="AppTheme" parent="BaseAppTheme.AppCompat"/>
+
+    <style name="ColorPickerDialogTheme" parent="ColorPicker.Dark">
+        <item name="cp_showOpacityBar">true</item>
+        <item name="cp_showHexaDecimalValue">true</item>
+        <item name="cp_showColorComponentsInfo">false</item>
+    </style>
 </resources>

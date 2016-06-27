@@ -7,6 +7,8 @@ import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.azeesoft.lib.colorpicker.ColorPickerDialog;
+import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleData;
@@ -22,6 +24,8 @@ import com.idonans.doodle.brush.Pencil;
 public class DoodleActionPanel {
 
     private static final String TAG = "DoodleActionPanel";
+
+    private final CommonActivity mActivity;
 
     private final View mSizeDown;
     private final View mSizeUp;
@@ -62,7 +66,10 @@ public class DoodleActionPanel {
         void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight);
     }
 
-    DoodleActionPanel(View rootView, Bundle savedInstanceState) {
+    DoodleActionPanel(CommonActivity activity, Bundle savedInstanceState) {
+        mActivity = activity;
+
+        View rootView = activity.getWindow().getDecorView();
         View doodlePanelView = ViewUtil.findViewByID(rootView, R.id.doodle_action_panel);
 
         View sizePanel = ViewUtil.findViewByID(doodlePanelView, R.id.size_panel);
@@ -70,7 +77,7 @@ public class DoodleActionPanel {
         mSizeUp = ViewUtil.findViewByID(sizePanel, R.id.size_up);
         mSizeView = ViewUtil.findViewByID(sizePanel, R.id.size_view);
         mSizeSeekBar = ViewUtil.findViewByID(sizePanel, R.id.size_seekbar);
-        mSizeSeekBar.setMax((int) MAX_SIZE);
+        mSizeSeekBar.setMax(MAX_SIZE);
 
         View alphaPanel = ViewUtil.findViewByID(doodlePanelView, R.id.alpha_panel);
         mAlphaDown = ViewUtil.findViewByID(alphaPanel, R.id.alpha_down);
@@ -150,6 +157,12 @@ public class DoodleActionPanel {
 
             }
         });
+        mSelectColor.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                openColorPicker();
+            }
+        });
         mMore.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -181,6 +194,24 @@ public class DoodleActionPanel {
                 doodleView.redo();
             }
         });
+    }
+
+    private void openColorPicker() {
+        ColorPickerDialog colorPickerDialog = ColorPickerDialog.createColorPickerDialog(mActivity, R.style.ColorPickerDialogTheme);
+        colorPickerDialog.setInitialColor(Color.argb(mAlpha, Color.red(mColor), Color.green(mColor), Color.blue(mColor)));
+        colorPickerDialog.setOnColorPickedListener(new ColorPickerDialog.OnColorPickedListener() {
+            @Override
+            public void onColorPicked(int color, String hexVal) {
+                changeToColorAndAlpha(color);
+            }
+        });
+        colorPickerDialog.show();
+    }
+
+    private void changeToColorAndAlpha(int argb) {
+        mColor = Color.rgb(Color.red(argb), Color.green(argb), Color.blue(argb));
+        mAlpha = Color.alpha(argb);
+        notifyBrushChanged();
     }
 
     public void setActionListener(ActionListener actionListener) {
