@@ -35,6 +35,8 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
 
     private String mDoodleDataKey;
 
+    private static final String EXTRA_PENDING_ASPECT_WIDTH = "aspect_width";
+    private static final String EXTRA_PENDING_ASPECT_HEIGHT = "aspect_height";
     private int mPendingAspectWidth;
     private int mPendingAspectHeight;
 
@@ -45,6 +47,8 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
 
         if (savedInstanceState != null) {
             mDoodleDataKey = savedInstanceState.getString(EXTRA_DOODLE_DATA_KEY);
+            mPendingAspectWidth = savedInstanceState.getInt(EXTRA_PENDING_ASPECT_WIDTH);
+            mPendingAspectHeight = savedInstanceState.getInt(EXTRA_PENDING_ASPECT_HEIGHT);
         }
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
@@ -116,6 +120,9 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
                 DoodleDataAsyncTask.save(mDoodleDataKey, doodleData);
             }
         });
+
+        outState.putInt(EXTRA_PENDING_ASPECT_WIDTH, mPendingAspectWidth);
+        outState.putInt(EXTRA_PENDING_ASPECT_HEIGHT, mPendingAspectHeight);
     }
 
     private void saveAsBitmap() {
