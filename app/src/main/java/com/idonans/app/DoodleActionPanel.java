@@ -84,6 +84,7 @@ public class DoodleActionPanel {
         mMore = ViewUtil.findViewByID(actionPanel, R.id.more);
 
         mMorePanel = new MorePanel(rootView);
+        mMorePanel.hide();
 
         restoreSavedState(savedInstanceState);
 
@@ -349,6 +350,7 @@ public class DoodleActionPanel {
                 @Override
                 public void onClick(View view) {
                     getActionListener().saveAsBitmap();
+                    hide();
                 }
             });
             mBrushPencil = ViewUtil.findViewByID(mMorePanelView, R.id.brush_pencil);
@@ -356,6 +358,7 @@ public class DoodleActionPanel {
                 @Override
                 public void onClick(View view) {
                     adjustBrushTypeTo(DoodleData.BRUSH_TYPE_PENCIL);
+                    hide();
                 }
             });
             mBrushLeaves = ViewUtil.findViewByID(mMorePanelView, R.id.brush_leaves);
@@ -363,6 +366,7 @@ public class DoodleActionPanel {
                 @Override
                 public void onClick(View view) {
                     adjustBrushTypeTo(DoodleData.BRUSH_TYPE_LEAVES);
+                    hide();
                 }
             });
         }
