@@ -209,29 +209,13 @@ public class DoodleActionPanel {
     }
 
     private void changeToColorAndAlpha(int argb) {
-        mColor = Color.rgb(Color.red(argb), Color.green(argb), Color.blue(argb));
-        mAlpha = Color.alpha(argb);
+        mColor = replaceAlpha(argb, 255);
+        mAlpha = getColorAlpha(argb);
         notifyBrushChanged();
     }
 
     public void setActionListener(ActionListener actionListener) {
         mActionListener = actionListener;
-    }
-
-    public float getSize() {
-        return mSize;
-    }
-
-    public int getAlpha() {
-        return mAlpha;
-    }
-
-    public int getColor() {
-        return mColor;
-    }
-
-    public int getBrushType() {
-        return mBrushType;
     }
 
     @NonNull
@@ -253,7 +237,7 @@ public class DoodleActionPanel {
             size = savedInstanceState.getInt(EXTRA_SIZE, size);
             alpha = savedInstanceState.getInt(EXTRA_ALPHA, alpha);
             color = savedInstanceState.getInt(EXTRA_COLOR, color);
-            brushType = savedInstanceState.getInt(EXTRA_COLOR, brushType);
+            brushType = savedInstanceState.getInt(EXTRA_BRUSH_TYPE, brushType);
         }
         mSize = size;
         mAlpha = alpha;
@@ -273,7 +257,7 @@ public class DoodleActionPanel {
         mSizeSeekBar.setProgress(mSize);
         mAlphaView.setText(String.valueOf(mAlpha));
         mAlphaSeekBar.setProgress(mAlpha);
-        mSelectColor.setTextColor(removeAlpha(mColor));
+        mSelectColor.setTextColor(replaceAlpha(mColor, mAlpha));
     }
 
     private int trimSize(int size) {
@@ -330,12 +314,16 @@ public class DoodleActionPanel {
         throw new IllegalArgumentException("error brush type:" + mBrushType);
     }
 
-    private static int removeAlpha(int color) {
-        return Color.argb(255, Color.alpha(color), Color.green(color), Color.blue(color));
+    private static int replaceAlpha(int color, int alpha) {
+        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
+    }
+
+    private static int getColorAlpha(int color) {
+        return Color.alpha(color);
     }
 
     public void onSaveInstanceState(Bundle outState) {
-        outState.putFloat(EXTRA_SIZE, mSize);
+        outState.putInt(EXTRA_SIZE, mSize);
         outState.putInt(EXTRA_ALPHA, mAlpha);
         outState.putInt(EXTRA_COLOR, mColor);
         outState.putInt(EXTRA_BRUSH_TYPE, mBrushType);
