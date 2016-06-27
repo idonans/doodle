@@ -58,6 +58,8 @@ public class DoodleActionPanel {
         void saveAsBitmap();
 
         void onBrushChanged();
+
+        void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight);
     }
 
     DoodleActionPanel(View rootView, Bundle savedInstanceState) {
@@ -335,6 +337,9 @@ public class DoodleActionPanel {
         private final View mSave;
         private final View mBrushPencil;
         private final View mBrushLeaves;
+        private final View mCanvasSize1x1;
+        private final View mCanvasSize3x4;
+        private final View mCanvasSize9x16;
 
         private MorePanel(View rootView) {
             mMoreOutsideTouch = ViewUtil.findViewByID(rootView, R.id.action_panel_more_touch_outside);
@@ -369,6 +374,34 @@ public class DoodleActionPanel {
                     hide();
                 }
             });
+            mCanvasSize1x1 = ViewUtil.findViewByID(mMorePanelView, R.id.canvas_size_1x1);
+            mCanvasSize1x1.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    changeCanvasSizeAspectRadioTo(1, 1);
+                    hide();
+                }
+            });
+            mCanvasSize3x4 = ViewUtil.findViewByID(mMorePanelView, R.id.canvas_size_3x4);
+            mCanvasSize3x4.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    changeCanvasSizeAspectRadioTo(3, 4);
+                    hide();
+                }
+            });
+            mCanvasSize9x16 = ViewUtil.findViewByID(mMorePanelView, R.id.canvas_size_9x16);
+            mCanvasSize9x16.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    changeCanvasSizeAspectRadioTo(9, 16);
+                    hide();
+                }
+            });
+        }
+
+        private void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight) {
+            getActionListener().changeCanvasSizeAspectRadioTo(aspectWidth, aspectHeight);
         }
 
         void show() {
@@ -392,6 +425,12 @@ public class DoodleActionPanel {
 
         @Override
         public void onBrushChanged() {
+            // ignore
+        }
+
+        @Override
+        public void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight) {
+            // ignore
         }
 
     }

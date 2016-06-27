@@ -26,7 +26,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.UUID;
 
-public class MainActivity extends CommonActivity {
+public class MainActivity extends CommonActivity implements ConfirmAspectRadioSizeDialog.OnConfirmListener {
 
     private static final String TAG = "MainActivity";
     private static final String EXTRA_DOODLE_DATA_KEY = "doodle_data";
@@ -34,6 +34,9 @@ public class MainActivity extends CommonActivity {
     private DoodleActionPanel mDoodleActionPanel;
 
     private String mDoodleDataKey;
+
+    private int mPendingAspectWidth;
+    private int mPendingAspectHeight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +60,14 @@ public class MainActivity extends CommonActivity {
             @Override
             public void onBrushChanged() {
                 mDoodleView.setBrush(mDoodleActionPanel.createBrush());
+            }
+
+            @Override
+            public void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight) {
+                mPendingAspectWidth = aspectWidth;
+                mPendingAspectHeight = aspectHeight;
+                ConfirmAspectRadioSizeDialog dialog = new ConfirmAspectRadioSizeDialog();
+                dialog.show(getSupportFragmentManager(), "ConfirmAspectRadioSizeDialog");
             }
         });
 
@@ -126,6 +137,17 @@ public class MainActivity extends CommonActivity {
         // 正常结束时删除可能存在的临时文件
         if (mDoodleDataKey != null) {
             DoodleDataAsyncTask.remove(mDoodleDataKey);
+        }
+    }
+
+    @Override
+    public void onConfirm(boolean cancel) {
+        if (!cancel && mDoodleView != null) {
+            if (mPendingAspectWidth > 0 && mPendingAspectHeight > 0) {
+                mDoodleView.setAspectRatio(mPendingAspectWidth, mPendingAspectHeight);
+            } else {
+                throw new IllegalArgumentException("pending aspect radio invalid [" + mPendingAspectWidth + ", " + mPendingAspectHeight + "]");
+            }
         }
     }
 
