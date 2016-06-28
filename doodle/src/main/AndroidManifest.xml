@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="true"
-        android:supportsRtl="false">
+        android:supportsRtl="true">
     </application>
 
 </manifest>

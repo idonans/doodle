@@ -1,4 +1,4 @@
-package com.idonans.app;
+package com.idonans.doodle.demo;
 
 import android.graphics.Bitmap;
 import android.os.Bundle;

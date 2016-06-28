@@ -6,7 +6,7 @@
              android:layout_height="match_parent"
              android:background="@color/material_grey_900"
              android:fitsSystemWindows="true"
-             tools:context="com.idonans.app.MainActivity">
+             tools:context="com.idonans.doodle.demo.MainActivity">
 
     <RelativeLayout
         android:layout_width="match_parent"
