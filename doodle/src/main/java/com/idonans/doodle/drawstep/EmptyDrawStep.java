@@ -18,4 +18,29 @@ public final class EmptyDrawStep extends DrawStep {
         // ignore
     }
 
+    @Override
+    public void resetPlayStep() {
+        // do nothing
+    }
+
+    @Override
+    public int getPlayStepCountTotal() {
+        return 0;
+    }
+
+    @Override
+    public int getPlayStepCountPlayed() {
+        return 0;
+    }
+
+    @Override
+    public int getPlayStepCountRemain() {
+        return 0;
+    }
+
+    @Override
+    public int playSteps(int stepSize) {
+        return 0;
+    }
+
 }

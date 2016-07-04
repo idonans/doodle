@@ -39,4 +39,36 @@ public class PointDrawStep extends DrawStep {
         canvas.drawPoint(mX, mY, mPaint);
     }
 
+    // 画点只有一个播放步骤
+    private boolean mPlayed;
+
+    @Override
+    public void resetPlayStep() {
+        mPlayed = false;
+    }
+
+    @Override
+    public int getPlayStepCountTotal() {
+        return 1;
+    }
+
+    @Override
+    public int getPlayStepCountPlayed() {
+        return mPlayed ? 1 : 0;
+    }
+
+    @Override
+    public int getPlayStepCountRemain() {
+        return mPlayed ? 0 : 1;
+    }
+
+    @Override
+    public int playSteps(int stepSize) {
+        if (mPlayed) {
+            return 0;
+        }
+        mPlayed = true;
+        return 1;
+    }
+
 }

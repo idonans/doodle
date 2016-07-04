@@ -4,13 +4,14 @@ import android.graphics.Canvas;
 import android.support.annotation.NonNull;
 
 import com.idonans.doodle.DoodleView;
+import com.idonans.doodle.DoodleViewPlayer;
 import com.idonans.doodle.brush.Brush;
 
 /**
  * 一个绘画步骤
  * Created by idonans on 16-5-17.
  */
-public abstract class DrawStep {
+public abstract class DrawStep implements DoodleViewPlayer.IStepPlayable {
 
     protected final Brush mDrawBrush;
 

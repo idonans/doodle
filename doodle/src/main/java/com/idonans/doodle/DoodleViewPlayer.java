@@ -31,7 +31,7 @@ public class DoodleViewPlayer extends FrameLayout {
     private DoodleView mDoodleView;
     private TaskQueue mTaskQueue;
     private PlayController mPlayController;
-    private long mSpeed = 1000L;
+    private long mSpeed = 100L;
 
     public DoodleViewPlayer(Context context) {
         super(context);
@@ -201,7 +201,7 @@ public class DoodleViewPlayer extends FrameLayout {
         }
 
         private void playNext() {
-            mDoodleView.redo();
+            mDoodleView.playStep(1);
         }
 
         @Override
@@ -212,7 +212,7 @@ public class DoodleViewPlayer extends FrameLayout {
             playNext();
 
             Threads.sleepQuietly(getSpeed());
-            mDoodleView.canRedo(new DoodleView.ActionCallback() {
+            mDoodleView.canPlayStep(new DoodleView.ActionCallback() {
                 @Override
                 public void onActionResult(boolean success) {
                     if (success) {
@@ -291,6 +291,37 @@ public class DoodleViewPlayer extends FrameLayout {
 
     private static void showLog(@NonNull String log) {
         Toast.makeText(AppContext.getContext(), log, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 单步播放步骤，通常指的是上一个点
+     */
+    public interface IStepPlayable {
+
+        /**
+         * 重置播放步骤，使得所有播放步骤都是未播放的
+         */
+        void resetPlayStep();
+
+        /**
+         * 获取总的播放步骤数，等于已播放的和未播放的之和 >=0
+         */
+        int getPlayStepCountTotal();
+
+        /**
+         * 获取已经播放的步骤数, >=0
+         */
+        int getPlayStepCountPlayed();
+
+        /**
+         * 获取剩下的还未播放的步骤数, >=0
+         */
+        int getPlayStepCountRemain();
+
+        /**
+         * 接着播放指定步骤( stepSize > 0)，返回实际的播放步骤数，如果没有步骤可以播放，返回 0
+         */
+        int playSteps(int stepSize);
     }
 
 }

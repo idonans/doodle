@@ -371,6 +371,29 @@ public class DoodleView extends FrameLayout {
         });
     }
 
+    public void canPlayStep(final ActionCallback callback) {
+        mRender.canPlayStep(new ActionCallback() {
+            @Override
+            public void onActionResult(final boolean success) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onActionResult(success);
+                    }
+                });
+            }
+        });
+    }
+
+    public void playStep(int playStepSize) {
+        mRender.playStep(playStepSize, new ActionCallback() {
+            @Override
+            public void onActionResult(boolean success) {
+                // ignore
+            }
+        });
+    }
+
     public interface SaveAsBitmapCallback {
         void onSavedAsBitmap(Bitmap bitmap);
     }
@@ -1029,6 +1052,42 @@ public class DoodleView extends FrameLayout {
             });
         }
 
+        /**
+         * 是否可以单步播放
+         */
+        public void canPlayStep(final ActionCallback callback) {
+            this.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore canPlayStep, just callback with false");
+                        callback.onActionResult(false);
+                        return;
+                    }
+
+                    callback.onActionResult(canvasBuffer.canPlayStep());
+                }
+            });
+        }
+
+        public void playStep(final int playStepSize, final ActionCallback callback) {
+            this.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore playStep, just callback with false");
+                        callback.onActionResult(false);
+                        return;
+                    }
+
+                    int playedStep = canvasBuffer.playStep(playStepSize);
+                    callback.onActionResult(playedStep > 0);
+                }
+            });
+        }
+
         private class CanvasBuffer {
 
             private static final String TAG = "Render$CanvasBuffer";
@@ -1233,6 +1292,78 @@ public class DoodleView extends FrameLayout {
 
                 notifyUndoRedoChanged();
                 return true;
+            }
+
+            /**
+             * 是否有更多的步骤可以单步播放，单步 redo. 注意要忽略 mDrawSteps 末尾可能存在的空步骤.
+             */
+            public boolean canPlayStep() {
+                if (canRedo()) {
+                    return true;
+                }
+
+                int size = mDrawSteps.size();
+                if (size > 0) {
+                    DrawStep drawStep = mDrawSteps.get(size - 1);
+                    // 最后一个有剩余的可单步播放步骤
+                    if (drawStep.getPlayStepCountRemain() > 0) {
+                        return true;
+                    }
+
+                    if (size > 1 && drawStep instanceof EmptyDrawStep) {
+                        // 最后一个是空步骤，判断倒数第二个
+                        drawStep = mDrawSteps.get(size - 2);
+                        return drawStep.getPlayStepCountRemain() > 0;
+                    }
+                }
+                return false;
+            }
+
+            /**
+             * 单步播放指定步数，返回实际播放步数，如果没有耕读步骤可以播放，返回 0.
+             * 注意要忽略 mDrawSteps 末尾可能存在的空步骤.
+             */
+            public int playStep(int playStep) {
+                int stepPlayedThis = 0;
+                while (playStep > 0) {
+                    int size = mDrawSteps.size();
+                    if (size > 0) {
+                        DrawStep drawStep = mDrawSteps.get(size - 1);
+                        int stepPlayed = drawStep.playSteps(playStep);
+                        if (stepPlayed > 0) {
+                            stepPlayedThis += stepPlayed;
+                            playStep -= stepPlayed;
+                            continue;
+                        } else if (size > 1 && drawStep instanceof EmptyDrawStep) {
+                            // 最后一个是空步骤，判断倒数第二个
+                            drawStep = mDrawSteps.get(size - 2);
+                            stepPlayed = drawStep.playSteps(playStep);
+                            if (stepPlayed > 0) {
+                                stepPlayedThis += stepPlayed;
+                                playStep -= stepPlayed;
+                                continue;
+                            }
+                        }
+                    }
+
+                    // 从 redo 区域回退一个，再播放
+                    if (redo()) {
+                        size = mDrawSteps.size();
+                        DrawStep drawStep;
+                        if (hasEmptyDrawStepOnEnd()) {
+                            // 倒数第二个是刚才回退的
+                            drawStep = mDrawSteps.get(size - 2);
+                        } else {
+                            // 倒数第一个是刚才回退的
+                            drawStep = mDrawSteps.get(size - 1);
+                        }
+                        drawStep.resetPlayStep();
+                        continue;
+                    }
+
+                    break;
+                }
+                return stepPlayedThis;
             }
 
             public void setMatrix(final Matrix matrix) {
@@ -1665,6 +1796,31 @@ public class DoodleView extends FrameLayout {
         @Override
         public void onDraw(@NonNull Canvas canvas) {
             canvas.drawBitmap(mBitmap, 0f, 0f, null);
+        }
+
+        @Override
+        public void resetPlayStep() {
+            throw new IllegalAccessError();
+        }
+
+        @Override
+        public int getPlayStepCountTotal() {
+            throw new IllegalAccessError();
+        }
+
+        @Override
+        public int getPlayStepCountPlayed() {
+            throw new IllegalAccessError();
+        }
+
+        @Override
+        public int getPlayStepCountRemain() {
+            throw new IllegalAccessError();
+        }
+
+        @Override
+        public int playSteps(int stepSize) {
+            throw new IllegalAccessError();
         }
     }
 
