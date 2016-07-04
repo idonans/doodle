@@ -64,6 +64,8 @@ public class DoodleActionPanel {
         void onBrushChanged();
 
         void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight);
+
+        void play();
     }
 
     DoodleActionPanel(CommonActivity activity, Bundle savedInstanceState) {
@@ -359,6 +361,7 @@ public class DoodleActionPanel {
         private final View mCanvasSize1x1;
         private final View mCanvasSize3x4;
         private final View mCanvasSize9x16;
+        private final View mPlay;
 
         private MorePanel(View rootView) {
             mMoreOutsideTouch = ViewUtil.findViewByID(rootView, R.id.action_panel_more_touch_outside);
@@ -417,6 +420,14 @@ public class DoodleActionPanel {
                     hide();
                 }
             });
+            mPlay = ViewUtil.findViewByID(mMorePanelView, R.id.play);
+            mPlay.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    getActionListener().play();
+                    hide();
+                }
+            });
         }
 
         private void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight) {
@@ -449,6 +460,11 @@ public class DoodleActionPanel {
 
         @Override
         public void changeCanvasSizeAspectRadioTo(int aspectWidth, int aspectHeight) {
+            // ignore
+        }
+
+        @Override
+        public void play() {
             // ignore
         }
 

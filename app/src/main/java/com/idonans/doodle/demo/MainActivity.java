@@ -1,5 +1,6 @@
 package com.idonans.doodle.demo;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -72,6 +73,29 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
                 mPendingAspectHeight = aspectHeight;
                 ConfirmAspectRadioSizeDialog dialog = new ConfirmAspectRadioSizeDialog();
                 dialog.show(getSupportFragmentManager(), "ConfirmAspectRadioSizeDialog");
+            }
+
+            @Override
+            public void play() {
+                mDoodleView.save(new DoodleView.SaveDataActionCallback() {
+                    @Override
+                    public void onDataSaved(@Nullable DoodleData doodleData) {
+                        DoodleDataAsyncTask.save("play", doodleData, new DoodleDataAsyncTask.DoodleDataSaveCallback() {
+                            @Override
+                            public void onSaveSuccess(final String path) {
+                                Threads.runOnUi(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (MainActivity.this.isAvailable()) {
+                                            Intent intent = DoodlePlayActivity.start(MainActivity.this, path);
+                                            MainActivity.this.startActivity(intent);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
             }
         });
 
@@ -167,10 +191,18 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
             void onDoodleDataLoad(DoodleData doodleData);
         }
 
+        public interface DoodleDataSaveCallback {
+            void onSaveSuccess(String path);
+        }
+
         // 使用单任务队列确保 save & load 不会冲突
         private static final TaskQueue mTaskQueue = new TaskQueue(1);
 
         public static void save(final String key, final DoodleData doodleData) {
+            save(key, doodleData, null);
+        }
+
+        public static void save(final String key, final DoodleData doodleData, final DoodleDataSaveCallback callback) {
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
@@ -186,6 +218,9 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
 
                     if (DoodleDataEditorV1.saveToFile(file.getAbsolutePath(), doodleData)) {
                         StorageManager.getInstance().setCache(key, file.getAbsolutePath());
+                        if (callback != null) {
+                            callback.onSaveSuccess(file.getAbsolutePath());
+                        }
                     } else {
                         showMessage("save to dd file... fail to save");
                         // save fail, delete tmp file
