@@ -389,7 +389,9 @@ public class DoodleView extends FrameLayout {
         mRender.playStep(playStepSize, new ActionCallback() {
             @Override
             public void onActionResult(boolean success) {
-                // ignore
+                if (success) {
+                    mRender.postInvalidate();
+                }
             }
         });
     }
