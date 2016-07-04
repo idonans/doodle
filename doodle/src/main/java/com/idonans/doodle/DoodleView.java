@@ -277,6 +277,23 @@ public class DoodleView extends FrameLayout {
     }
 
     /**
+     * 涂鸦板是否已经准备好(视图是否已经渲染完成)
+     */
+    void isInitOk(final ActionCallback callback) {
+        mRender.isInitOk(new ActionCallback() {
+            @Override
+            public void onActionResult(final boolean success) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onActionResult(success);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
      * 是否可以回退. 在 ui 线程中回调.
      */
     public void canUndo(final ActionCallback callback) {
@@ -922,6 +939,18 @@ public class DoodleView extends FrameLayout {
                 }
             });
             postInvalidate();
+        }
+
+        /**
+         * 相关视图是否已经渲染完成
+         */
+        public void isInitOk(final ActionCallback callback) {
+            this.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    callback.onActionResult(isAvailable());
+                }
+            });
         }
 
         /**

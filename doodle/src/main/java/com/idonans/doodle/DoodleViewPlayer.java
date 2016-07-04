@@ -165,7 +165,32 @@ public class DoodleViewPlayer extends FrameLayout {
                 return;
             }
             mPlaying = true;
-            enqueueNext();
+
+            pendingPlay();
+        }
+
+        /**
+         * 等待 doodle view 初始化完成之后，开始 play
+         */
+        private void pendingPlay() {
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    if (PlayController.this.isAvailable()) {
+                        mDoodleView.isInitOk(new DoodleView.ActionCallback() {
+                            @Override
+                            public void onActionResult(boolean success) {
+                                if (success) {
+                                    enqueueNext();
+                                } else {
+                                    Threads.sleepQuietly(200L);
+                                    pendingPlay();
+                                }
+                            }
+                        });
+                    }
+                }
+            });
         }
 
         public boolean isPlaying() {
