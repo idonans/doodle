@@ -31,7 +31,7 @@ public class DoodleViewPlayer extends FrameLayout {
     private DoodleView mDoodleView;
     private TaskQueue mTaskQueue;
     private PlayController mPlayController;
-    private long mSpeed = 100L;
+    private long mSpeed = 10L;
 
     public DoodleViewPlayer(Context context) {
         super(context);
