@@ -201,7 +201,7 @@ public class DoodleViewPlayer extends FrameLayout {
         }
 
         private void playNext() {
-            mDoodleView.undo();
+            mDoodleView.redo();
         }
 
         @Override
@@ -212,7 +212,7 @@ public class DoodleViewPlayer extends FrameLayout {
             playNext();
 
             Threads.sleepQuietly(getSpeed());
-            mDoodleView.canUndo(new DoodleView.ActionCallback() {
+            mDoodleView.canRedo(new DoodleView.ActionCallback() {
                 @Override
                 public void onActionResult(boolean success) {
                     if (success) {
