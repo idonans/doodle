@@ -61,7 +61,7 @@ public class DoodleViewPlayer extends FrameLayout {
 
         Context context = getContext();
         LayoutInflater layoutInflater = LayoutInflater.from(context);
-        layoutInflater.inflate(R.layout.doodle_layout, this, true);
+        layoutInflater.inflate(R.layout.doodle_player_layout, this, true);
 
         mDoodleView = ViewUtil.findViewByID(this, R.id.doodle_view);
         mDoodleView.setReadOnly(true);
