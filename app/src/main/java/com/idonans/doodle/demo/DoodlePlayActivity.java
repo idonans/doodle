@@ -36,9 +36,7 @@ public class DoodlePlayActivity extends CommonActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (!mDoodleViewPlayer.isPlaying()) {
-            mDoodleViewPlayer.resume();
-        }
+        mDoodleViewPlayer.resume();
     }
 
     @Override

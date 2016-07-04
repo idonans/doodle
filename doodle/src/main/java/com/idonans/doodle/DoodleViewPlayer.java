@@ -112,7 +112,7 @@ public class DoodleViewPlayer extends FrameLayout {
     }
 
     public boolean isPlaying() {
-        return mPlayController != null && mPlayController.isPlaying();
+        return mPlayController != null;
     }
 
     public void pause() {
@@ -120,16 +120,18 @@ public class DoodleViewPlayer extends FrameLayout {
     }
 
     public void resume() {
-        final PlayController playController = new PlayController();
-        mPlayController = playController;
-        mTaskQueue.enqueue(new Runnable() {
-            @Override
-            public void run() {
-                if (playController.isAvailable()) {
-                    playController.play();
+        if (!isPlaying()) {
+            final PlayController playController = new PlayController();
+            mPlayController = playController;
+            mTaskQueue.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    if (playController.isAvailable()) {
+                        playController.play();
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     private void showDDFileErrorMessage(int errorCodeDDFile) {
@@ -157,14 +159,15 @@ public class DoodleViewPlayer extends FrameLayout {
     private class PlayController implements Available, Runnable {
 
         private static final String TAG = "PlayController";
-        private boolean mPlaying;
+        private boolean mCalledPlay;
 
         public void play() {
-            if (mPlaying) {
-                CommonLog.d(TAG + " already in playing");
+            if (mCalledPlay) {
+                CommonLog.e(TAG + " play already called");
+                new RuntimeException().printStackTrace();
                 return;
             }
-            mPlaying = true;
+            mCalledPlay = true;
 
             pendingPlay();
         }
@@ -191,10 +194,6 @@ public class DoodleViewPlayer extends FrameLayout {
                     }
                 }
             });
-        }
-
-        public boolean isPlaying() {
-            return mPlaying;
         }
 
         private void enqueueNext() {
