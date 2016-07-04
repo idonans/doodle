@@ -78,6 +78,9 @@ public class DoodleView extends FrameLayout {
     @NonNull
     private Brush mBrush;
 
+    // 只读模式下，不处理绘画手势，但是可以移动和缩放
+    private boolean mReadOnly;
+
     private void init() {
         if (isInEditMode()) {
             return;
@@ -930,7 +933,8 @@ public class DoodleView extends FrameLayout {
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
                     if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore canUndo");
+                        CommonLog.d(TAG + " available is false, ignore canUndo check, just callback with false.");
+                        callback.onActionResult(false);
                         return;
                     }
 
@@ -948,7 +952,8 @@ public class DoodleView extends FrameLayout {
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
                     if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore undo");
+                        CommonLog.d(TAG + " available is false, ignore undo, just callback with false");
+                        callback.onActionResult(false);
                         return;
                     }
 
@@ -966,7 +971,8 @@ public class DoodleView extends FrameLayout {
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
                     if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore canRedo");
+                        CommonLog.d(TAG + " available is false, ignore canRedo, just callback with false");
+                        callback.onActionResult(false);
                         return;
                     }
 
@@ -984,7 +990,8 @@ public class DoodleView extends FrameLayout {
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
                     if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore redo");
+                        CommonLog.d(TAG + " available is false, ignore redo, just callback with false");
+                        callback.onActionResult(false);
                         return;
                     }
 
@@ -1555,11 +1562,22 @@ public class DoodleView extends FrameLayout {
 
             mCanvasScaleGestureDetector.onTouchEvent(event);
             mCanvasTranslationGestureDetectorCompat.onTouchEvent(event);
-            mTextureActionGestureDetectorCompat.onTouchEvent(event);
+
+            if (!isReadOnly()) {
+                mTextureActionGestureDetectorCompat.onTouchEvent(event);
+            }
 
             return true;
         }
 
+    }
+
+    public void setReadOnly(boolean readOnly) {
+        mReadOnly = readOnly;
+    }
+
+    public boolean isReadOnly() {
+        return mReadOnly;
     }
 
     /**
