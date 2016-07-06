@@ -43,4 +43,12 @@ public final class EmptyDrawStep extends DrawStep {
         return 0;
     }
 
+    /**
+     * 空步骤不具有绘画内容
+     */
+    @Override
+    public boolean hasDrawContent() {
+        return false;
+    }
+
 }

@@ -32,7 +32,6 @@ import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.brush.Brush;
 import com.idonans.doodle.brush.Empty;
 import com.idonans.doodle.drawstep.DrawStep;
-import com.idonans.doodle.drawstep.EmptyDrawStep;
 
 import java.util.ArrayList;
 
@@ -536,7 +535,7 @@ public class DoodleView extends FrameLayout {
                         return;
                     }
 
-                    if (!mCanvasBuffer.hasAnyNoneEmptyDrawStep(false)) {
+                    if (!mCanvasBuffer.hasDrawContent(false)) {
                         // 没有有效的绘画步骤，这是一张空白
                         callback.onSavedAsBitmap(null);
                         return;
@@ -560,7 +559,7 @@ public class DoodleView extends FrameLayout {
                         return;
                     }
 
-                    if (!mCanvasBuffer.hasAnyNoneEmptyDrawStep(true)) {
+                    if (!mCanvasBuffer.hasDrawContent(true)) {
                         // 没有有效的绘画步骤，这是一张空白
                         callback.onDataSaved(null);
                         return;
@@ -1098,9 +1097,9 @@ public class DoodleView extends FrameLayout {
             private static final int FRAMES_STEP_INTERVAL_MAX = 8;
             // 关键帧缓存图像
             private final ArrayList<FrameDrawStep> mFrames = new ArrayList<>(FRAMES_SIZE_MAX);
-            // 绘画步骤末尾可能至多存在一个 EmptyDrawStep, 用来标记上一个绘画步骤结束
+            // 绘画步骤
             private final ArrayList<DrawStep> mDrawSteps = new ArrayList<>();
-            // redo 绘画步骤中不会有 EmptyDrawStep
+            // redo 绘画步骤
             private final ArrayList<DrawStep> mDrawStepsRedo = new ArrayList<>();
 
             private final float mMaxScale;
@@ -1171,49 +1170,37 @@ public class DoodleView extends FrameLayout {
             }
 
             /**
-             * 判断在绘画步骤末尾是否存在一个 EmptyDrawStep
-             */
-            private boolean hasEmptyDrawStepOnEnd() {
-                int size = mDrawSteps.size();
-                if (size <= 0) {
-                    return false;
-                }
-                return mDrawSteps.get(size - 1) instanceof EmptyDrawStep;
-            }
-
-            /**
-             * 涂鸦板中是否包含有效的绘画步骤.
+             * 涂鸦板中是否包含有效的绘画内容.
              *
              * @param includeRedo 指定是否包含 redo 步骤
              */
-            public boolean hasAnyNoneEmptyDrawStep(boolean includeRedo) {
+            public boolean hasDrawContent(boolean includeRedo) {
                 if (includeRedo) {
-                    // redo 中不会有空步骤 (EmptyDrawStep).
-                    if (mDrawStepsRedo.size() > 0) {
+                    for (DrawStep drawStep : mDrawStepsRedo) {
+                        if (drawStep.hasDrawContent()) {
+                            return true;
+                        }
+                    }
+                }
+
+                for (DrawStep drawStep : mDrawSteps) {
+                    if (drawStep.hasDrawContent()) {
                         return true;
                     }
                 }
 
-                int size = mDrawSteps.size();
-                if (size <= 0) {
-                    return false;
-                }
-                if (size == 1) {
-                    // 如果只有一个绘画步骤，需要校验该步骤是否是一个空步骤
-                    return !(mDrawSteps.get(0) instanceof EmptyDrawStep);
-                }
-                return true;
+                return false;
             }
 
             /**
-             * redo steps changed return true
+             * 清空 redo, 如果 redo 中包含有效的绘画内容，返回 true, 否则返回 false.
              */
             private boolean clearRedo() {
+                boolean hasDrawContent = DrawStep.hasDrawContent(mDrawStepsRedo);
                 if (mDrawStepsRedo.size() > 0) {
                     mDrawStepsRedo.clear();
-                    return true;
                 }
-                return false;
+                return hasDrawContent;
             }
 
             private void notifyUndoRedoChanged() {
@@ -1226,52 +1213,49 @@ public class DoodleView extends FrameLayout {
              * 小心线程. 是否可以回退
              */
             public boolean canUndo() {
-                // 如果当前绘画步骤中只有一个 EmptyDrawStep, 则不能回退
-                if (hasEmptyDrawStepOnEnd()) {
-                    return mDrawSteps.size() > 1;
-                }
-                return mDrawSteps.size() > 0;
+                return DrawStep.hasDrawContent(mDrawSteps);
             }
 
             /**
              * 小心线程. 回退操作，回退成功，返回 true, 否则返回 false.
              */
             public boolean undo() {
-                boolean canUndo = canUndo();
-                if (!canUndo) {
+                int size = mDrawSteps.size();
+                if (size <= 0) {
                     return false;
                 }
 
-                DrawStep lastDrawStep;
-                int size = mDrawSteps.size();
-                // 如果当前绘画步骤末尾是 EmptyDrawStep, 则回退时跳过末尾，回退末尾的前一步
-                // 此处不必考虑当前绘画步骤中只有一个 EmptyDrawStep 的情况，前面的 canUndo 判断中已经过滤了此种情形。
-                if (hasEmptyDrawStepOnEnd()) {
-                    lastDrawStep = mDrawSteps.remove(size - 2);
-                } else {
-                    lastDrawStep = mDrawSteps.remove(size - 1);
-                }
+                // 移除最后一个
+                int indexRemove = size - 1;
+                DrawStep drawStepRemove = mDrawSteps.remove(indexRemove);
 
-                mDrawStepsRedo.add(lastDrawStep);
-
-                // 如果最后一个关键帧在绘画步骤之外，则删除之(如果最后一个关键帧此时对应的刚好是最后一个绘画步骤，也需要删除之)
+                // 校验如果最后一个关键帧在绘画步骤之外，需要删除(如果最后一个关键帧此时对应的刚好是最后一个绘画步骤，也需要删除)
                 int frameSize = mFrames.size();
                 if (frameSize > 0) {
                     FrameDrawStep lastFrame = mFrames.get(frameSize - 1);
-                    if (lastFrame.mDrawStepIndex >= size - 2) {
+                    // 此处需要对比 (indexRemove - 1), 例如：第三个绘画步骤是被删除的，最后一个关键帧对应的是第二个绘画步骤，则最后一个关键帧也要删除
+                    // 最后一个关键帧与最终图像之间至少相差一个绘画步骤
+                    if (lastFrame.mDrawStepIndex >= indexRemove - 1) {
                         mFrames.remove(frameSize - 1);
                     }
                 }
 
-                notifyUndoRedoChanged();
-                return true;
+                if (drawStepRemove.hasDrawContent()) {
+                    // 如果该步骤有绘画内容，需要将其添加 redo 中
+                    mDrawStepsRedo.add(drawStepRemove);
+                    notifyUndoRedoChanged();
+                    return true;
+                } else {
+                    // 该步骤没有绘画内容，需要继续 undo
+                    return undo();
+                }
             }
 
             /**
              * 小心线程. 是否可以前进, undo 之后的反向恢复
              */
             public boolean canRedo() {
-                return mDrawStepsRedo.size() > 0;
+                return DrawStep.hasDrawContent(mDrawStepsRedo);
             }
 
             /**
@@ -1283,21 +1267,25 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                DrawStep lastDrawStep = mDrawStepsRedo.remove(size - 1);
+                // 移除最后一个
+                int indexRemove = size - 1;
+                DrawStep drawStepRemove = mDrawStepsRedo.remove(indexRemove);
 
-                // 如果当前绘画步骤末尾是 EmptyDrawStep, 则将恢复的绘画步骤插入到末尾之前。
-                if (hasEmptyDrawStepOnEnd()) {
-                    mDrawSteps.add(mDrawSteps.size() - 1, lastDrawStep);
+                // 关键帧缓存不会受到影响
+
+                if (drawStepRemove.hasDrawContent()) {
+                    // 如果该 redo 的步骤有绘画内容
+                    mDrawSteps.add(drawStepRemove);
+                    notifyUndoRedoChanged();
+                    return true;
                 } else {
-                    mDrawSteps.add(lastDrawStep);
+                    // 该 redo 步骤没有绘画内容，需要继续 redo
+                    return redo();
                 }
-
-                notifyUndoRedoChanged();
-                return true;
             }
 
             /**
-             * 是否有更多的步骤可以单步播放，单步 redo. 注意要忽略 mDrawSteps 末尾可能存在的空步骤.
+             * 是否有更多的步骤可以单步播放，单步 redo.
              */
             public boolean canPlayStep() {
                 if (canRedo()) {
@@ -1305,25 +1293,17 @@ public class DoodleView extends FrameLayout {
                 }
 
                 int size = mDrawSteps.size();
-                if (size > 0) {
-                    DrawStep drawStep = mDrawSteps.get(size - 1);
-                    // 最后一个有剩余的可单步播放步骤
-                    if (drawStep.getPlayStepCountRemain() > 0) {
-                        return true;
-                    }
-
-                    if (size > 1 && drawStep instanceof EmptyDrawStep) {
-                        // 最后一个是空步骤，判断倒数第二个
-                        drawStep = mDrawSteps.get(size - 2);
-                        return drawStep.getPlayStepCountRemain() > 0;
-                    }
+                if (size <= 0) {
+                    return false;
                 }
-                return false;
+
+                // 校验最后一个步骤是否还有没播放完的单步内容
+                DrawStep drawStep = mDrawSteps.get(size - 1);
+                return drawStep.getPlayStepCountRemain() > 0;
             }
 
             /**
-             * 单步播放指定步数，返回实际播放步数，如果没有耕读步骤可以播放，返回 0.
-             * 注意要忽略 mDrawSteps 末尾可能存在的空步骤.
+             * 单步播放指定步数，返回实际播放步数，如果没有更多步骤可以播放，返回 0.
              */
             public int playStep(int playStep) {
                 int stepPlayedThis = 0;
@@ -1336,30 +1316,13 @@ public class DoodleView extends FrameLayout {
                             stepPlayedThis += stepPlayed;
                             playStep -= stepPlayed;
                             continue;
-                        } else if (size > 1 && drawStep instanceof EmptyDrawStep) {
-                            // 最后一个是空步骤，判断倒数第二个
-                            drawStep = mDrawSteps.get(size - 2);
-                            stepPlayed = drawStep.playSteps(playStep);
-                            if (stepPlayed > 0) {
-                                stepPlayedThis += stepPlayed;
-                                playStep -= stepPlayed;
-                                continue;
-                            }
                         }
                     }
 
-                    // 从 redo 区域回退一个，再播放. 注意需要这次回退的 drawStep 重置播放步骤
-                    boolean hasEmptyDrawStepOnEndBefore = hasEmptyDrawStepOnEnd();
+                    // 从 redo 区域回退一个，再播放. 注意需要重置这次回退的 drawStep 的播放步骤
                     if (redo()) {
                         size = mDrawSteps.size();
-                        DrawStep drawStep;
-                        if (hasEmptyDrawStepOnEndBefore) {
-                            // 倒数第二个是刚才回退的
-                            drawStep = mDrawSteps.get(size - 2);
-                        } else {
-                            // 倒数第一个是刚才回退的
-                            drawStep = mDrawSteps.get(size - 1);
-                        }
+                        DrawStep drawStep = mDrawSteps.get(size - 1);
                         drawStep.resetPlayStep();
                         continue;
                     }
@@ -1663,9 +1626,11 @@ public class DoodleView extends FrameLayout {
             public boolean dispatchGestureAction(GestureAction gestureAction) {
                 // 标记 undo or redo 是否产生了变化
                 boolean changed = false;
+
                 // 开始新的动作，清空可能存在的 redo 内容, cancel 动作不清空 redo
                 if (!(gestureAction instanceof CancelGestureAction)) {
-                    changed |= clearRedo();
+                    // 此处直接赋值就可以不必位或运算
+                    changed = clearRedo();
                 }
 
                 int drawStepSize = mDrawSteps.size();
@@ -1673,11 +1638,12 @@ public class DoodleView extends FrameLayout {
                     // 第一个绘画步骤
                     DrawStep drawStep = mBrush.createDrawStep(gestureAction);
                     mDrawSteps.add(drawStep);
-                    // 如果新步骤是一个空步骤，则 undo 不会变更
-                    boolean isNewEmptyDrawStep = drawStep instanceof EmptyDrawStep;
-                    changed |= !isNewEmptyDrawStep;
+                    // undo 会不会变更取决于新的步骤是否有绘画内容
+                    changed |= drawStep.hasDrawContent();
                     return changed;
                 }
+
+                // 当前至少已经有一个绘画步骤
 
                 DrawStep lastDrawStep = mDrawSteps.get(drawStepSize - 1);
                 if (lastDrawStep.dispatchGestureAction(gestureAction, getBrush())) {
@@ -1689,24 +1655,21 @@ public class DoodleView extends FrameLayout {
 
                 // 开始一个新的绘画步骤
                 DrawStep drawStep = mBrush.createDrawStep(gestureAction);
-                // 如果新步骤是一个空步骤，则 undo 不会变更
-                boolean isNewEmptyDrawStep = drawStep instanceof EmptyDrawStep;
 
-                // 覆盖空步骤或者添加新步骤， undo 可能变化
-                changed |= false;
+                // 记录当前是否可以 undo
+                boolean canUndoBefore = DrawStep.hasDrawContent(mDrawSteps);
 
-                if (lastDrawStep instanceof EmptyDrawStep) {
-                    // 最后一步是一个空步骤， 覆盖该空步骤
-
-                    if (drawStepSize == 1) {
-                        // 当前只有一个空步骤， undo 取决于新步骤是否也是空步骤
-                        changed |= !isNewEmptyDrawStep;
-                    }
+                if (!lastDrawStep.hasDrawContent()) {
+                    // 如果当前最后一个绘画步骤没有内容，则用新的绘画步骤覆盖它
                     mDrawSteps.set(drawStepSize - 1, drawStep);
                 } else {
-                    // 之前有非空步骤，不管新步骤是否是空步骤，undo 都不会产生变化. (总是可以 undo)
+                    // 当前最后一个绘画步骤有内容，添加新的步骤到末尾
                     mDrawSteps.add(drawStep);
                 }
+
+                // 只有当新添加的步骤是有内容的，并且之前是没有内容的，undo 才会变化（从不能 undo 到可以 undo）
+                changed |= (drawStep.hasDrawContent() && !canUndoBefore);
+
                 return changed;
             }
         }
