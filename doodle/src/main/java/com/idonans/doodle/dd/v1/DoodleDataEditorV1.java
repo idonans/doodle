@@ -1,6 +1,7 @@
 package com.idonans.doodle.dd.v1;
 
 import com.idonans.acommon.lang.Charsets;
+import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.IOUtil;
 import com.idonans.doodle.DoodleData;
 import com.idonans.doodle.dd.DoodleDataEditor;
@@ -19,6 +20,8 @@ import java.util.ArrayList;
  * Created by pengji on 16-6-22.
  */
 public class DoodleDataEditorV1 extends DoodleDataEditor {
+
+    private static final String TAG = "DoodleDataEditorV1";
 
     /**
      * 将 DoodleData 保存到指定文件内，保存成功，返回 true, 否则返回 false.
@@ -125,11 +128,17 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
         return false;
     }
 
+    /**
+     * 解析指定文件为 DoodleData，解析失败返回 null. 忽略空步骤
+     */
+    public static DoodleData readFromFile(String filePath) {
+        return readFromFile(filePath, true);
+    }
 
     /**
      * 解析指定文件为 DoodleData，解析失败返回 null.
      */
-    public static DoodleData readFromFile(String filePath) {
+    public static DoodleData readFromFile(String filePath, boolean ignoreEmptyStep) {
         FileInputStream fis = null;
         InputStreamReader isr = null;
         BufferedReader br = null;
@@ -169,10 +178,20 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                     return doodleData;
                 } else if ("DS".equalsIgnoreCase(flagLine)) {
                     // 渲染区数据块
-                    doodleData.drawStepDatas.add(readDrawStepData(br));
+                    DoodleData.DrawStepData drawStepData = readDrawStepData(br);
+                    if (ignoreEmptyStep && isEmptyDrawStep(drawStepData)) {
+                        CommonLog.d(TAG + " read ignore empty draw step in DS");
+                    } else {
+                        doodleData.drawStepDatas.add(drawStepData);
+                    }
                 } else if ("DSR".equalsIgnoreCase(flagLine)) {
                     // redo 区数据块
-                    doodleData.drawStepDatasRedo.add(readDrawStepData(br));
+                    DoodleData.DrawStepData drawStepData = readDrawStepData(br);
+                    if (ignoreEmptyStep && isEmptyDrawStep(drawStepData)) {
+                        CommonLog.d(TAG + " read ignore empty draw step in DSR");
+                    } else {
+                        doodleData.drawStepDatasRedo.add(drawStepData);
+                    }
                 } else {
                     throw new IllegalArgumentException("flag line error " + flagLine);
                 }
@@ -185,6 +204,16 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
             IOUtil.closeQuietly(fis);
         }
         return null;
+    }
+
+    /**
+     * 校验指定绘画步骤是否是一个空步骤
+     */
+    private static boolean isEmptyDrawStep(DoodleData.DrawStepData drawStepData) {
+        if (drawStepData == null || drawStepData.type == DoodleData.DRAW_STEP_TYPE_EMPTY) {
+            return true;
+        }
+        return false;
     }
 
     private static DoodleData.DrawStepData readDrawStepData(BufferedReader br) throws IOException {
