@@ -24,9 +24,16 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
     private static final String TAG = "DoodleDataEditorV1";
 
     /**
-     * 将 DoodleData 保存到指定文件内，保存成功，返回 true, 否则返回 false.
+     * 将 DoodleData 保存到指定文件内，保存成功，返回 true, 否则返回 false. 忽略空步骤
      */
     public static boolean saveToFile(String filePath, DoodleData doodleData) {
+        return saveToFile(filePath, doodleData, true);
+    }
+
+    /**
+     * 将 DoodleData 保存到指定文件内，保存成功，返回 true, 否则返回 false.
+     */
+    public static boolean saveToFile(String filePath, DoodleData doodleData, boolean ignoreEmptyStep) {
         FileOutputStream fos = null;
         OutputStreamWriter osw = null;
         BufferedWriter bw = null;
@@ -55,6 +62,10 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
             // write 渲染区数据块
             if (doodleData.drawStepDatas != null) {
                 for (DoodleData.DrawStepData dsd : doodleData.drawStepDatas) {
+                    if (ignoreEmptyStep && isEmptyDrawStep(dsd)) {
+                        CommonLog.d(TAG + " write ignore empty draw step in DS");
+                        continue;
+                    }
                     // 渲染区标识
                     writeLine("DS", bw);
                     // write 步骤块
@@ -85,6 +96,10 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
             // write redo 区数据块
             if (doodleData.drawStepDatasRedo != null) {
                 for (DoodleData.DrawStepData dsd : doodleData.drawStepDatasRedo) {
+                    if (ignoreEmptyStep && isEmptyDrawStep(dsd)) {
+                        CommonLog.d(TAG + " write ignore empty draw step in DSR");
+                        continue;
+                    }
                     // redo 区标识
                     writeLine("DSR", bw);
                     // write 步骤块
