@@ -68,29 +68,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                     }
                     // 渲染区标识
                     writeLine("DS", bw);
-                    // write 步骤块
-                    writeLine(dsd.type, bw);
-                    if (dsd.points != null && !dsd.points.isEmpty()) {
-                        int size = dsd.points.size();
-                        if (size % 2 != 0) {
-                            throw new IllegalArgumentException("point size not match");
-                        }
-                        for (int i = 0; i < size; i++) {
-                            writeLine(dsd.points.get(i) + "," + dsd.points.get(i + 1), bw);
-                            i++;
-                        }
-                    }
-                    // 步骤块结束
-                    writeLine("EOS", bw);
-                    // write 笔刷块
-                    if (dsd.brushData != null) {
-                        writeLine(dsd.brushData.type, bw);
-                        writeLine(dsd.brushData.color, bw);
-                        writeLine(dsd.brushData.size, bw);
-                        writeLine(dsd.brushData.alpha, bw);
-                    }
-                    // 笔刷块结束
-                    writeLine("EOB", bw);
+                    writeDrawStepData(dsd, bw);
                 }
             }
             // write redo 区数据块
@@ -102,29 +80,7 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
                     }
                     // redo 区标识
                     writeLine("DSR", bw);
-                    // write 步骤块
-                    writeLine(dsd.type, bw);
-                    if (dsd.points != null && !dsd.points.isEmpty()) {
-                        int size = dsd.points.size();
-                        if (size % 2 != 0) {
-                            throw new IllegalArgumentException("point size not match");
-                        }
-                        for (int i = 0; i < size; i++) {
-                            writeLine(dsd.points.get(i) + "," + dsd.points.get(i + 1), bw);
-                            i++;
-                        }
-                    }
-                    // 步骤块结束
-                    writeLine("EOS", bw);
-                    // write 笔刷块
-                    if (dsd.brushData != null) {
-                        writeLine(dsd.brushData.type, bw);
-                        writeLine(dsd.brushData.color, bw);
-                        writeLine(dsd.brushData.size, bw);
-                        writeLine(dsd.brushData.alpha, bw);
-                    }
-                    // 笔刷块结束
-                    writeLine("EOB", bw);
+                    writeDrawStepData(dsd, bw);
                 }
             }
 
@@ -141,6 +97,32 @@ public class DoodleDataEditorV1 extends DoodleDataEditor {
             IOUtil.closeQuietly(fos);
         }
         return false;
+    }
+
+    private static void writeDrawStepData(DoodleData.DrawStepData dsd, BufferedWriter bw) throws IOException {
+        // write 步骤块
+        writeLine(dsd.type, bw);
+        if (dsd.points != null && !dsd.points.isEmpty()) {
+            int size = dsd.points.size();
+            if (size % 2 != 0) {
+                throw new IllegalArgumentException("point size not match");
+            }
+            for (int i = 0; i < size; i++) {
+                writeLine(dsd.points.get(i) + "," + dsd.points.get(i + 1), bw);
+                i++;
+            }
+        }
+        // 步骤块结束
+        writeLine("EOS", bw);
+        // write 笔刷块
+        if (dsd.brushData != null) {
+            writeLine(dsd.brushData.type, bw);
+            writeLine(dsd.brushData.color, bw);
+            writeLine(dsd.brushData.size, bw);
+            writeLine(dsd.brushData.alpha, bw);
+        }
+        // 笔刷块结束
+        writeLine("EOB", bw);
     }
 
     /**
