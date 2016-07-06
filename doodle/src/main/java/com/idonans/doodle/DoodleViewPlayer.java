@@ -78,7 +78,10 @@ public class DoodleViewPlayer extends FrameLayout {
     }
 
     public void play(final String ddFile) {
-        // TODO 如何快速清空当前内容 ？ 设置播放的标示？终止当前正在播放的逻辑？
+        play(ddFile, true);
+    }
+
+    public void play(final String ddFile, final boolean ignoreEmptyDrawStep) {
         final PlayController playController = new PlayController();
         mPlayController = playController;
 
@@ -86,7 +89,7 @@ public class DoodleViewPlayer extends FrameLayout {
         mTaskQueue.enqueue(new Runnable() {
             @Override
             public void run() {
-                Object[] ret = DoodleDataEditorV1Loader.load(ddFile);
+                Object[] ret = DoodleDataEditorV1Loader.load(ddFile, ignoreEmptyDrawStep);
 
                 if (!playController.isAvailable()) {
                     return;
@@ -255,7 +258,7 @@ public class DoodleViewPlayer extends FrameLayout {
 
     private static class DoodleDataEditorV1Loader {
 
-        public static Object[] load(final String ddFilePath) {
+        public static Object[] load(final String ddFilePath, final boolean ignoreEmptyDrawStep) {
             Object[] ret = new Object[2];
             ret[0] = ERROR_CODE_DD_FILE_OK;
             if (TextUtils.isEmpty(ddFilePath)) {
@@ -270,7 +273,7 @@ public class DoodleViewPlayer extends FrameLayout {
                 return ret;
             } else if (version == 1) {
                 // 版本 1
-                DoodleData doodleData = DoodleDataEditorV1.readFromFile(ddFilePath);
+                DoodleData doodleData = DoodleDataEditorV1.readFromFile(ddFilePath, ignoreEmptyDrawStep);
                 if (doodleData == null) {
                     // 版本 1 dd 文件解析失败
                     ret[0] = ERROR_CODE_DD_FILE_ERROR;

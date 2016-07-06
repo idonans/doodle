@@ -80,14 +80,14 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
                 mDoodleView.save(new DoodleView.SaveDataActionCallback() {
                     @Override
                     public void onDataSaved(@Nullable DoodleData doodleData) {
-                        DoodleDataAsyncTask.save("play", doodleData, new DoodleDataAsyncTask.DoodleDataSaveCallback() {
+                        DoodleDataAsyncTask.save("play", doodleData, false, new DoodleDataAsyncTask.DoodleDataSaveCallback() {
                             @Override
                             public void onSaveSuccess(final String path) {
                                 Threads.runOnUi(new Runnable() {
                                     @Override
                                     public void run() {
                                         if (MainActivity.this.isAvailable()) {
-                                            Intent intent = DoodlePlayActivity.start(MainActivity.this, path);
+                                            Intent intent = DoodlePlayActivity.start(MainActivity.this, path, false);
                                             MainActivity.this.startActivity(intent);
                                         }
                                     }
@@ -203,6 +203,10 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
         }
 
         public static void save(final String key, final DoodleData doodleData, final DoodleDataSaveCallback callback) {
+            save(key, doodleData, true, callback);
+        }
+
+        public static void save(final String key, final DoodleData doodleData, final boolean ignoreEmptyDrawStep, final DoodleDataSaveCallback callback) {
             mTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
@@ -216,7 +220,7 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
                         return;
                     }
 
-                    if (DoodleDataEditorV1.saveToFile(file.getAbsolutePath(), doodleData)) {
+                    if (DoodleDataEditorV1.saveToFile(file.getAbsolutePath(), doodleData, ignoreEmptyDrawStep)) {
                         StorageManager.getInstance().setCache(key, file.getAbsolutePath());
                         if (callback != null) {
                             callback.onSaveSuccess(file.getAbsolutePath());

@@ -1348,11 +1348,12 @@ public class DoodleView extends FrameLayout {
                         }
                     }
 
-                    // 从 redo 区域回退一个，再播放
+                    // 从 redo 区域回退一个，再播放. 注意需要这次回退的 drawStep 重置播放步骤
+                    boolean hasEmptyDrawStepOnEndBefore = hasEmptyDrawStepOnEnd();
                     if (redo()) {
                         size = mDrawSteps.size();
                         DrawStep drawStep;
-                        if (hasEmptyDrawStepOnEnd()) {
+                        if (hasEmptyDrawStepOnEndBefore) {
                             // 倒数第二个是刚才回退的
                             drawStep = mDrawSteps.get(size - 2);
                         } else {
