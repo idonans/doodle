@@ -80,6 +80,7 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
                 mDoodleView.save(new DoodleView.SaveDataActionCallback() {
                     @Override
                     public void onDataSaved(@Nullable DoodleData doodleData) {
+                        DoodleDataAsyncTask.remove("play");
                         DoodleDataAsyncTask.save("play", doodleData, false, new DoodleDataAsyncTask.DoodleDataSaveCallback() {
                             @Override
                             public void onSaveSuccess(final String path) {
