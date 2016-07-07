@@ -18,37 +18,32 @@ public final class EmptyDrawStep extends DrawStep {
         // ignore
     }
 
-    @Override
-    public void resetPlayStep() {
-        // do nothing
-    }
-
-    @Override
-    public int getPlayStepCountTotal() {
-        return 0;
-    }
-
-    @Override
-    public int getPlayStepCountPlayed() {
-        return 0;
-    }
-
-    @Override
-    public int getPlayStepCountRemain() {
-        return 0;
-    }
-
-    @Override
-    public int playSteps(int stepSize) {
-        return 0;
-    }
-
     /**
      * 空步骤不具有绘画内容
      */
     @Override
     public boolean hasDrawContent() {
         return false;
+    }
+
+    @Override
+    public void resetSubStep() {
+        // ignore
+    }
+
+    @Override
+    public int getSubStepCount() {
+        return 0;
+    }
+
+    @Override
+    public int getSubStepMoved() {
+        return 0;
+    }
+
+    @Override
+    public int moveSubStepBy(int count) {
+        return 0;
     }
 
 }

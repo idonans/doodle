@@ -36,39 +36,56 @@ public class PointDrawStep extends DrawStep {
 
     @Override
     public void onDraw(@NonNull Canvas canvas) {
-        canvas.drawPoint(mX, mY, mPaint);
-    }
-
-    // 画点只有一个播放步骤
-    private boolean mPlayed;
-
-    @Override
-    public void resetPlayStep() {
-        mPlayed = false;
-    }
-
-    @Override
-    public int getPlayStepCountTotal() {
-        return 1;
-    }
-
-    @Override
-    public int getPlayStepCountPlayed() {
-        return mPlayed ? 1 : 0;
-    }
-
-    @Override
-    public int getPlayStepCountRemain() {
-        return mPlayed ? 0 : 1;
-    }
-
-    @Override
-    public int playSteps(int stepSize) {
-        if (mPlayed) {
-            return 0;
+        if (mSubStepHelper != null) {
+            mSubStepHelper.onDraw(canvas);
+        } else {
+            canvas.drawPoint(mX, mY, mPaint);
         }
-        mPlayed = true;
-        return 1;
+    }
+
+    private SubStepHelper mSubStepHelper;
+
+    @Override
+    public void resetSubStep() {
+        mSubStepHelper = new SubStepHelper(mPaint, mX, mY);
+    }
+
+    @Override
+    public int getSubStepCount() {
+        return mSubStepHelper.getCount();
+    }
+
+    @Override
+    public int getSubStepMoved() {
+        return mSubStepHelper.getMoved();
+    }
+
+    @Override
+    public int moveSubStepBy(int count) {
+        return mSubStepHelper.moveBy(count);
+    }
+
+    private static class SubStepHelper extends Helper {
+
+        private final Paint mPaint;
+        private final float mX;
+        private final float mY;
+
+        public SubStepHelper(Paint paint, float x, float y) {
+            super(1);
+            mPaint = paint;
+            mX = x;
+            mY = y;
+        }
+
+        @Override
+        public void onDraw(@NonNull Canvas canvas) {
+            int moved = getMoved();
+            if (moved > 0) {
+                canvas.drawPoint(mX, mY, mPaint);
+            }
+        }
+
     }
 
 }

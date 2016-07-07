@@ -4,7 +4,6 @@ import android.graphics.Canvas;
 import android.support.annotation.NonNull;
 
 import com.idonans.doodle.DoodleView;
-import com.idonans.doodle.DoodleViewPlayer;
 import com.idonans.doodle.brush.Brush;
 
 import java.util.Collection;
@@ -13,7 +12,7 @@ import java.util.Collection;
  * 一个绘画步骤
  * Created by idonans on 16-5-17.
  */
-public abstract class DrawStep implements DoodleViewPlayer.IStepPlayable {
+public abstract class DrawStep implements SubStep {
 
     protected final Brush mDrawBrush;
 

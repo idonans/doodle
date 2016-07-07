@@ -78,9 +78,135 @@ public class ScribbleDrawStep extends DrawStep {
     }
 
     @Override
-    public void onDraw(@NonNull Canvas canvas) {
-        canvas.drawPath(mPath, mPaint);
+    public boolean hasDrawContent() {
+        // 如果只有一个绘制点，则相当于没有内容
+        return mAllPoints.size() > 2;
     }
+
+    @Override
+    public void onDraw(@NonNull Canvas canvas) {
+        if (mSubStepHelper != null) {
+            mSubStepHelper.onDraw(canvas);
+        } else {
+            canvas.drawPath(mPath, mPaint);
+        }
+    }
+
+    private SubStepHelper mSubStepHelper;
+
+    @Override
+    public void resetSubStep() {
+        int subStepCount = 0;
+        ArrayList<Float> allPoints = new ArrayList<>(mAllPoints);
+        if (allPoints.size() > 2) {
+            subStepCount = (allPoints.size() - 2) / 2;
+        }
+        mSubStepHelper = new SubStepHelper(mPaint, allPoints, subStepCount);
+    }
+
+    @Override
+    public int getSubStepCount() {
+        return mSubStepHelper.getCount();
+    }
+
+    @Override
+    public int getSubStepMoved() {
+        return mSubStepHelper.getMoved();
+    }
+
+    @Override
+    public int moveSubStepBy(int count) {
+        return mSubStepHelper.moveBy(count);
+    }
+
+
+    private static class SubStepHelper extends Helper {
+
+        private final Paint mPaint;
+
+        private final Path mPath;
+        private float mPreX;
+        private float mPreY;
+
+        private final ArrayList<Float> mAllPoints;
+
+        public SubStepHelper(Paint paint, ArrayList<Float> allPoints, int count) {
+            super(count);
+            mPaint = paint;
+            mAllPoints = allPoints;
+
+            mPath = new Path();
+            resetPath();
+        }
+
+        private void resetPath() {
+            float x = mAllPoints.get(0);
+            float y = mAllPoints.get(1);
+
+            mPath.reset();
+            mPath.moveTo(x, y);
+            mPreX = x;
+            mPreY = y;
+        }
+
+        public void toPoint(float x, float y) {
+            mPath.quadTo(mPreX, mPreY, (mPreX + x) / 2, (mPreY + y) / 2);
+            mPreX = x;
+            mPreY = y;
+        }
+
+        @Override
+        public int moveBy(int count) {
+            final int movedCountBefore = getMoved();
+            final int movedCountThis = super.moveBy(count);
+
+            if (movedCountThis > 0) {
+                // 向右移动
+                for (int i = 0; i < movedCountThis; i++) {
+                    // 在现有 path 后面追加移动的点
+                    int indexAppendX = (1/*起始点*/ + movedCountBefore/*之前移动的点*/ + i/*本次移动的点*/) * 2/*每一点（一个坐标）对应两个位置*/;
+                    int indexAppendY = indexAppendX + 1;
+                    toPoint(mAllPoints.get(indexAppendX), mAllPoints.get(indexAppendY));
+                }
+            } else if (movedCountThis < 0) {
+                // 向左移动
+                // path 不支持回退，需要从起始点重新绘制
+                int moved = getMoved(); /*相当于 (movedCountBefore + movedCountThis)*/
+                resetPath();
+                for (int i = 0; i < moved; i++) {
+                    // 从起始点依次追加到当前移动的位置
+                    int indexAppendX = (1/*起始点*/ + i/*追加的点*/) * 2/*每一点（一个坐标）对应两个位置*/;
+                    int indexAppendY = indexAppendX + 1;
+                    toPoint(mAllPoints.get(indexAppendX), mAllPoints.get(indexAppendY));
+                }
+            }
+
+            return movedCountThis;
+        }
+
+        @Override
+        public void onDraw(@NonNull Canvas canvas) {
+            int moved = getMoved();
+            if (moved > 0) {
+                canvas.drawPath(mPath, mPaint);
+            }
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+
 
     // 已经播放的点的数量
     private int mPlayedPointSize;
@@ -162,5 +288,7 @@ public class ScribbleDrawStep extends DrawStep {
             throw new IllegalArgumentException("size error, not covert as point. " + size);
         }
     }
+
+    */
 
 }
