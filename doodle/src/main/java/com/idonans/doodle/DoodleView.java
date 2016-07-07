@@ -275,6 +275,10 @@ public class DoodleView extends FrameLayout {
         void onActionResult(boolean success);
     }
 
+    public interface ActionCallback2 {
+        void onActionResult(boolean success, int value);
+    }
+
     /**
      * 涂鸦板是否已经准备好(视图是否已经渲染完成)
      */
@@ -370,8 +374,11 @@ public class DoodleView extends FrameLayout {
         });
     }
 
-    public void canPlayStep(final ActionCallback callback) {
-        mRender.canPlayStep(new ActionCallback() {
+    /**
+     * for player
+     */
+    public void canUndoByStep(final ActionCallback callback) {
+        mRender.canUndoByStep(new ActionCallback() {
             @Override
             public void onActionResult(final boolean success) {
                 Threads.runOnUi(new Runnable() {
@@ -384,10 +391,56 @@ public class DoodleView extends FrameLayout {
         });
     }
 
-    public void playStep(int playStepSize) {
-        mRender.playStep(playStepSize, new ActionCallback() {
+    /**
+     * for player
+     */
+    public void undoByStep(final int undoStepCount, final ActionCallback2 callback2) {
+        mRender.undoByStep(undoStepCount, new ActionCallback2() {
             @Override
-            public void onActionResult(boolean success) {
+            public void onActionResult(final boolean success, final int value) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback2.onActionResult(success, value);
+                    }
+                });
+                if (success) {
+                    mRender.postInvalidate();
+                }
+            }
+        });
+    }
+
+    /**
+     * for player
+     */
+    public void canRedoByStep(final ActionCallback callback) {
+        mRender.canRedoByStep(new ActionCallback() {
+            @Override
+            public void onActionResult(final boolean success) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onActionResult(success);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * for player
+     */
+    public void redoByStep(final int redoStepCount, final ActionCallback2 callback2) {
+        mRender.redoByStep(redoStepCount, new ActionCallback2() {
+            @Override
+            public void onActionResult(final boolean success, final int value) {
+                Threads.runOnUi(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback2.onActionResult(success, value);
+                    }
+                });
                 if (success) {
                     mRender.postInvalidate();
                 }
@@ -1053,38 +1106,68 @@ public class DoodleView extends FrameLayout {
             });
         }
 
-        /**
-         * 是否可以单步播放
-         */
-        public void canPlayStep(final ActionCallback callback) {
+        public void canUndoByStep(final ActionCallback callback) {
             this.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
                     if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore canPlayStep, just callback with false");
+                        CommonLog.d(TAG + " available is false, ignore canUndoByStep, just callback with false");
                         callback.onActionResult(false);
                         return;
                     }
 
-                    callback.onActionResult(canvasBuffer.canPlayStep());
+                    callback.onActionResult(canvasBuffer.canUndoByStep());
                 }
             });
         }
 
-        public void playStep(final int playStepSize, final ActionCallback callback) {
+        public void undoByStep(final int undoStepCount, final ActionCallback2 callback2) {
             this.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     CanvasBuffer canvasBuffer = mCanvasBuffer;
                     if (!isAvailable()) {
-                        CommonLog.d(TAG + " available is false, ignore playStep, just callback with false");
+                        CommonLog.d(TAG + " available is false, ignore undoByStep, just callback with false");
+                        callback2.onActionResult(false, 0);
+                        return;
+                    }
+
+                    int count = canvasBuffer.undoByStep(undoStepCount);
+                    callback2.onActionResult(count > 0, count);
+                }
+            });
+        }
+
+        public void canRedoByStep(final ActionCallback callback) {
+            this.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore canRedoByStep, just callback with false");
                         callback.onActionResult(false);
                         return;
                     }
 
-                    int playedStep = canvasBuffer.playStep(playStepSize);
-                    callback.onActionResult(playedStep > 0);
+                    callback.onActionResult(canvasBuffer.canRedoByStep());
+                }
+            });
+        }
+
+        public void redoByStep(final int redoStepCount, final ActionCallback2 callback2) {
+            this.enqueue(new Runnable() {
+                @Override
+                public void run() {
+                    CanvasBuffer canvasBuffer = mCanvasBuffer;
+                    if (!isAvailable()) {
+                        CommonLog.d(TAG + " available is false, ignore redoByStep, just callback with false");
+                        callback2.onActionResult(false, 0);
+                        return;
+                    }
+
+                    int count = canvasBuffer.redoByStep(redoStepCount);
+                    callback2.onActionResult(count > 0, count);
                 }
             });
         }
@@ -1285,9 +1368,103 @@ public class DoodleView extends FrameLayout {
             }
 
             /**
-             * 是否有更多的步骤可以单步播放，单步 redo.
+             * 小心线程. 是否可以单步回退
              */
-            public boolean canPlayStep() {
+            public boolean canUndoByStep() {
+                int size = mDrawSteps.size();
+                if (size <= 0) {
+                    // draw steps 中没有绘画步骤，不能 undo by step
+                    return false;
+                }
+
+                for (DrawStep drawStep : mDrawSteps) {
+                    if (drawStep.getSubStepMoved() > 0) {
+                        // 发现一个 draw step 可以 undo by step
+                        // 此时满足 (drawStep.moveSubStepBy(-1) == -1)
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            /**
+             * 小心线程. 单步回退指定步数, 返回实际回退的步数, 返回值总是 >=0
+             */
+            public int undoByStep(int count) {
+                if (count < 0) {
+                    throw new IllegalArgumentException("count must >= 0");
+                }
+
+                int undoStepCount = 0;
+                while (count > 0) {
+                    int size = mDrawSteps.size();
+                    if (size <= 0) {
+                        break;
+                    }
+
+                    // 总是从最后一个步骤回退
+                    DrawStep lastDrawStep = mDrawSteps.get(size - 1);
+                    int moved = lastDrawStep.moveSubStepBy(-count);
+                    // moved 总是 <=0
+                    if (moved > 0 || moved < -count) {
+                        throw new IllegalStateException("move sub step status error. move sub step by " + (-count) + ", but return " + moved);
+                    }
+
+                    moved = -moved;
+
+                    if (moved > 0) {
+                        undoStepCount += moved;
+                        count -= moved;
+                        continue;
+                    } else {
+                        // moved == 0
+                        if (lastDrawStep.getSubStepMoved() != 0) {
+                            throw new IllegalStateException("move sub step status error. move sub step by "
+                                    + (-count) + ", but return " + moved + ", actually it's can move sub step.");
+                        }
+                    }
+
+                    // 此时 (lastDrawStep.getSubStepMoved() == 0)
+                    // 最后一个步骤已经移动完了，将其移动到 redo 队列中, 处理逻辑与 #undo() 中的涉及的相关逻辑相似
+
+                    // 移除最后一个
+                    int indexRemove = size - 1;
+                    // drawStepRemove 等同于 lastDrawStep
+                    DrawStep drawStepRemove = mDrawSteps.remove(indexRemove);
+                    if (drawStepRemove != lastDrawStep) {
+                        throw new IllegalAccessError("logic error");
+                    }
+
+                    // 校验如果最后一个关键帧在绘画步骤之外，需要删除(如果最后一个关键帧此时对应的刚好是最后一个绘画步骤，也需要删除)
+                    int frameSize = mFrames.size();
+                    if (frameSize > 0) {
+                        FrameDrawStep lastFrame = mFrames.get(frameSize - 1);
+                        // 此处需要对比 (indexRemove - 1), 例如：第三个绘画步骤是被删除的，最后一个关键帧对应的是第二个绘画步骤，则最后一个关键帧也要删除
+                        // 最后一个关键帧与最终图像之间至少相差一个绘画步骤
+                        if (lastFrame.mDrawStepIndex >= indexRemove - 1) {
+                            mFrames.remove(frameSize - 1);
+                        }
+                    }
+
+                    if (drawStepRemove.hasDrawContent()) {
+                        // 如果该步骤有绘画内容，才将其添加到 redo 中
+                        mDrawStepsRedo.add(lastDrawStep);
+                        notifyUndoRedoChanged();
+                    }
+                }
+
+                if (count < 0) {
+                    throw new IllegalAccessError("undo by step logic error " + count);
+                }
+
+                return undoStepCount;
+            }
+
+            /**
+             * 小心线程. 是否可以单步恢复
+             */
+            public boolean canRedoByStep() {
                 if (canRedo()) {
                     return true;
                 }
@@ -1297,39 +1474,60 @@ public class DoodleView extends FrameLayout {
                     return false;
                 }
 
-                // 校验最后一个步骤是否还有没播放完的单步内容
-                DrawStep drawStep = mDrawSteps.get(size - 1);
-                return drawStep.getPlayStepCountRemain() > 0;
+                DrawStep lastDrawStep = mDrawSteps.get(size - 1);
+                return lastDrawStep.getSubStepMoved() < lastDrawStep.getSubStepCount();
             }
 
             /**
-             * 单步播放指定步数，返回实际播放步数，如果没有更多步骤可以播放，返回 0.
+             * 小心线程. 单步恢复指定步数, 返回实际恢复的步数, 返回值总是 >=0
              */
-            public int playStep(int playStep) {
-                int stepPlayedThis = 0;
-                while (playStep > 0) {
+            public int redoByStep(int count) {
+                if (count < 0) {
+                    throw new IllegalArgumentException("count must >= 0");
+                }
+
+                int redoStepCount = 0;
+                while (count > 0) {
                     int size = mDrawSteps.size();
                     if (size > 0) {
-                        DrawStep drawStep = mDrawSteps.get(size - 1);
-                        int stepPlayed = drawStep.playSteps(playStep);
-                        if (stepPlayed > 0) {
-                            stepPlayedThis += stepPlayed;
-                            playStep -= stepPlayed;
+                        DrawStep lastDrawStep = mDrawSteps.get(size - 1);
+                        int moved = lastDrawStep.moveSubStepBy(count);
+                        // moved 总是 >=0
+                        if (moved < 0 || moved > count) {
+                            throw new IllegalStateException("move sub step status error. move sub step by " + count + ", but return " + moved);
+                        }
+
+                        if (moved > 0) {
+                            redoStepCount += moved;
+                            count -= moved;
                             continue;
+                        } else {
+                            // moved == 0
+                            if (lastDrawStep.getSubStepCount() != lastDrawStep.getSubStepMoved()) {
+                                throw new IllegalStateException("move sub step status error. move sub step by "
+                                        + count + ", but return " + moved + ", actually it's can move sub step.");
+                            }
                         }
                     }
 
-                    // 从 redo 区域回退一个，再播放. 注意需要重置这次回退的 drawStep 的播放步骤
+                    // 从 redo 区域回退一个
                     if (redo()) {
                         size = mDrawSteps.size();
+                        // draw steps 末尾的元素就是刚才 redo 的内容
                         DrawStep drawStep = mDrawSteps.get(size - 1);
-                        drawStep.resetPlayStep();
+                        // 当元素从 redo 移动到 draw steps 并用作单步操作，需要重置 sub step.
+                        drawStep.resetSubStep();
                         continue;
                     }
 
                     break;
                 }
-                return stepPlayedThis;
+
+                if (count < 0) {
+                    throw new IllegalAccessError("redo by step logic error " + count);
+                }
+
+                return redoStepCount;
             }
 
             public void setMatrix(final Matrix matrix) {
@@ -1765,27 +1963,22 @@ public class DoodleView extends FrameLayout {
         }
 
         @Override
-        public void resetPlayStep() {
+        public void resetSubStep() {
             throw new IllegalAccessError();
         }
 
         @Override
-        public int getPlayStepCountTotal() {
+        public int getSubStepCount() {
             throw new IllegalAccessError();
         }
 
         @Override
-        public int getPlayStepCountPlayed() {
+        public int getSubStepMoved() {
             throw new IllegalAccessError();
         }
 
         @Override
-        public int getPlayStepCountRemain() {
-            throw new IllegalAccessError();
-        }
-
-        @Override
-        public int playSteps(int stepSize) {
+        public int moveSubStepBy(int count) {
             throw new IllegalAccessError();
         }
     }

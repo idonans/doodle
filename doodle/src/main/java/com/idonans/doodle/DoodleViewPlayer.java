@@ -204,7 +204,12 @@ public class DoodleViewPlayer extends FrameLayout {
         }
 
         private void playNext() {
-            mDoodleView.playStep(1);
+            mDoodleView.redoByStep(1, new DoodleView.ActionCallback2() {
+                @Override
+                public void onActionResult(boolean success, int value) {
+                    // ignore
+                }
+            });
         }
 
         @Override
@@ -215,7 +220,7 @@ public class DoodleViewPlayer extends FrameLayout {
             playNext();
 
             Threads.sleepQuietly(getSpeed());
-            mDoodleView.canPlayStep(new DoodleView.ActionCallback() {
+            mDoodleView.canRedoByStep(new DoodleView.ActionCallback() {
                 @Override
                 public void onActionResult(boolean success) {
                     if (success) {
