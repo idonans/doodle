@@ -135,6 +135,8 @@ public class ScribbleDrawStep extends DrawStep {
             mPaint = paint;
             mAllPoints = allPoints;
 
+            checkSize(mAllPoints.size());
+
             mPath = new Path();
             resetPath();
         }
@@ -194,101 +196,10 @@ public class ScribbleDrawStep extends DrawStep {
 
     }
 
-
-
-
-
-
-
-
-
-
-
-
-    /*
-
-
-    // 已经播放的点的数量
-    private int mPlayedPointSize;
-
-    @Override
-    public void resetPlayStep() {
-        mPlayedPointSize = 0;
-    }
-
-    @Override
-    public int getPlayStepCountTotal() {
-        int size = mAllPoints.size();
-        checkSize(size);
-        return size / 2;
-    }
-
-    @Override
-    public int getPlayStepCountPlayed() {
-        checkSize(mPlayedPointSize);
-        return mPlayedPointSize / 2;
-    }
-
-    @Override
-    public int getPlayStepCountRemain() {
-        int size = mAllPoints.size() - mPlayedPointSize;
-        checkSize(size);
-        return size / 2;
-    }
-
-    @Override
-    public int playSteps(int stepSize) {
-        if (stepSize < 1) {
-            throw new IllegalArgumentException("step size error, must > 0, " + stepSize);
-        }
-
-        // 每一步播放两个点
-        int stepPlayedThis = 0;
-        while (stepSize > 0) {
-
-            if (mPlayedPointSize < 0) {
-                throw new IllegalAccessError("played point size error " + mPlayedPointSize);
-            }
-
-            int playStepCountRemain = getPlayStepCountRemain();
-            if (playStepCountRemain < 0) {
-                throw new IllegalAccessError("play step count remain < 0, " + playStepCountRemain);
-            }
-            if (playStepCountRemain == 0) {
-                // 没有更多可以播放的步骤
-                break;
-            }
-
-            if (mPlayedPointSize == 0) {
-                mPath.reset();
-                float x = mAllPoints.get(0);
-                float y = mAllPoints.get(1);
-                mPath.moveTo(mAllPoints.get(0), mAllPoints.get(1));
-                mPreX = x;
-                mPreY = y;
-            } else {
-                float x = mAllPoints.get(mPlayedPointSize);
-                float y = mAllPoints.get(mPlayedPointSize + 1);
-                mPath.quadTo(mPreX, mPreY, (mPreX + x) / 2, (mPreY + y) / 2);
-                mPreX = x;
-                mPreY = y;
-            }
-
-            mPlayedPointSize += 2;
-
-            stepSize--;
-            stepPlayedThis++;
-        }
-
-        return stepPlayedThis;
-    }
-
     private static void checkSize(int size) {
         if (size % 2 != 0) {
             throw new IllegalArgumentException("size error, not covert as point. " + size);
         }
     }
-
-    */
 
 }
