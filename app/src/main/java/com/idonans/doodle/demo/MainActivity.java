@@ -113,16 +113,6 @@ public class MainActivity extends CommonActivity implements ConfirmAspectRadioSi
                     }
                 }
             });
-        } else {
-            // for test load dd file
-            DoodleDataAsyncTask.loadDdFile("doodle1466581651277.dd", new DoodleDataAsyncTask.DoodleDataLoadCallback() {
-                @Override
-                public void onDoodleDataLoad(DoodleData doodleData) {
-                    if (doodleData != null && isAvailable()) {
-                        mDoodleView.load(doodleData);
-                    }
-                }
-            });
         }
     }
 
