@@ -6,7 +6,7 @@ import android.os.Bundle;
 
 import com.idonans.acommon.app.CommonActivity;
 import com.idonans.acommon.util.ViewUtil;
-import com.idonans.doodle.DoodleViewPlayer;
+import com.idonans.doodle.player.DoodleViewPlayer;
 
 /**
  * Created by pengji on 16-7-4.

@@ -282,7 +282,7 @@ public class DoodleView extends FrameLayout {
     /**
      * 涂鸦板是否已经准备好(视图是否已经渲染完成)
      */
-    void isInitOk(final ActionCallback callback) {
+    public void isInitOk(final ActionCallback callback) {
         mRender.isInitOk(new ActionCallback() {
             @Override
             public void onActionResult(final boolean success) {

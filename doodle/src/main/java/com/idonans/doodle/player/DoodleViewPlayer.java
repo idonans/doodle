@@ -1,4 +1,4 @@
-package com.idonans.doodle;
+package com.idonans.doodle.player;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -12,10 +12,11 @@ import android.widget.Toast;
 
 import com.idonans.acommon.AppContext;
 import com.idonans.acommon.lang.Available;
-import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
-import com.idonans.acommon.lang.Threads;
 import com.idonans.acommon.util.ViewUtil;
+import com.idonans.doodle.DoodleData;
+import com.idonans.doodle.DoodleView;
+import com.idonans.doodle.R;
 import com.idonans.doodle.dd.DoodleDataEditor;
 import com.idonans.doodle.dd.v1.DoodleDataEditorV1;
 
@@ -31,7 +32,7 @@ public class DoodleViewPlayer extends FrameLayout {
     private DoodleView mDoodleView;
     private TaskQueue mTaskQueue;
     private PlayController mPlayController;
-    private long mSpeed = 10L;
+    private long mSpeedDelay = 10L;
 
     public DoodleViewPlayer(Context context) {
         super(context);
@@ -69,71 +70,104 @@ public class DoodleViewPlayer extends FrameLayout {
         mTaskQueue = new TaskQueue(1);
     }
 
-    public long getSpeed() {
-        return mSpeed;
+    /**
+     * package, used by PlayController
+     */
+    TaskQueue getTaskQueue() {
+        return mTaskQueue;
     }
 
-    public void setSpeed(long speed) {
-        mSpeed = speed;
+    /**
+     * package, used by PlayController
+     */
+    PlayController getPlayController() {
+        return mPlayController;
     }
 
-    public void play(final String ddFile) {
-        play(ddFile, true);
+    public long getSpeedDelay() {
+        return mSpeedDelay;
     }
 
-    public void play(final String ddFile, final boolean ignoreEmptyDrawStep) {
-        final PlayController playController = new PlayController();
+    /**
+     * 设置播放速度延迟(ms)，值越小，播放速度越快
+     */
+    public void setSpeedDelay(long speedDelay) {
+        if (speedDelay < 0) {
+            speedDelay = 0;
+        }
+        mSpeedDelay = speedDelay;
+    }
+
+    /**
+     * 设置播放资源, dd 文件路径
+     */
+    public void setDoodleData(String ddFilePath) {
+        setDoodleData(ddFilePath, true);
+    }
+
+    public void setDoodleData(final String ddFilePath, final boolean ignoreEmptyDrawStep) {
+        setDoodleData(ddFilePath, ignoreEmptyDrawStep, true);
+    }
+
+    public void setDoodleData(final String ddFilePath, final boolean ignoreEmptyDrawStep, final boolean autoPlay) {
+        final PlayController playController = new PlayController.Default(this);
         mPlayController = playController;
-
-        mDoodleView.postShowLoading();
-        mTaskQueue.enqueue(new Runnable() {
+        playController.prepareing(new Runnable() {
             @Override
             public void run() {
-                Object[] ret = DoodleDataEditorV1Loader.load(ddFile, ignoreEmptyDrawStep);
-
-                if (!playController.isAvailable()) {
-                    return;
-                }
+                Object[] ret = DoodleDataEditorV1Loader.load(ddFilePath, ignoreEmptyDrawStep);
 
                 final int errorCodeDDFile = (int) ret[0];
                 if (errorCodeDDFile == ERROR_CODE_DD_FILE_OK) {
                     // dd 文件解析成功
-                    DoodleData doodleData = (DoodleData) ret[1];
+                    final DoodleData doodleData = (DoodleData) ret[1];
                     // play doodle data
                     resetDoodleData(doodleData);
-                    if (playController.isAvailable()) {
-                        mDoodleView.load(doodleData);
-                        playController.play();
-                    }
+                    playController.prepared(new Runnable() {
+                        @Override
+                        public void run() {
+                            mDoodleView.load(doodleData);
+
+                            if (autoPlay) {
+                                // 准备完成之后自动播放
+                                playController.play(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        startPlayEngine(playController);
+                                    }
+                                });
+                            }
+                        }
+                    });
                 } else {
-                    // 清空 doodle view
-                    mDoodleView.setAspectRatio(1, 1);
-                    showDDFileErrorMessage(errorCodeDDFile);
+                    // 播放资源加载失败
+                    playController.error(new Runnable() {
+                        @Override
+                        public void run() {
+                            // 清空 doodle view
+                            mDoodleView.setAspectRatio(1, 1);
+                            showDDFileErrorMessage(errorCodeDDFile);
+                        }
+                    });
                 }
             }
         });
     }
 
-    public boolean isPlaying() {
-        return mPlayController != null;
-    }
-
     public void pause() {
-        mPlayController = null;
+        if (mPlayController != null) {
+            mPlayController.pause(new Runnable() {
+                @Override
+                public void run() {
+                    // ignore
+                }
+            });
+        }
     }
 
     public void resume() {
-        if (!isPlaying()) {
-            final PlayController playController = new PlayController();
-            mPlayController = playController;
-            mTaskQueue.enqueue(new Runnable() {
-                @Override
-                public void run() {
-                    if (playController.isAvailable()) {
-                        playController.play();
-                    }
-                }
-            });
+        if (mPlayController != null) {
+            startPlayEngine(mPlayController);
         }
     }
 
@@ -150,7 +184,7 @@ public class DoodleViewPlayer extends FrameLayout {
                 break;
             case ERROR_CODE_DD_FILE_OK:
             default:
-                new RuntimeException().printStackTrace();
+                new RuntimeException("logic error").printStackTrace();
                 break;
         }
     }
@@ -159,84 +193,8 @@ public class DoodleViewPlayer extends FrameLayout {
         mPlayController = null;
     }
 
-    private class PlayController implements Available, Runnable {
 
-        private static final String TAG = "PlayController";
-        private boolean mCalledPlay;
-
-        public void play() {
-            if (mCalledPlay) {
-                CommonLog.e(TAG + " play already called");
-                new RuntimeException().printStackTrace();
-                return;
-            }
-            mCalledPlay = true;
-
-            pendingPlay();
-        }
-
-        /**
-         * 等待 doodle view 初始化完成之后，开始 play
-         */
-        private void pendingPlay() {
-            mTaskQueue.enqueue(new Runnable() {
-                @Override
-                public void run() {
-                    if (PlayController.this.isAvailable()) {
-                        mDoodleView.isInitOk(new DoodleView.ActionCallback() {
-                            @Override
-                            public void onActionResult(boolean success) {
-                                if (success) {
-                                    enqueueNext();
-                                } else {
-                                    Threads.sleepQuietly(200L);
-                                    pendingPlay();
-                                }
-                            }
-                        });
-                    }
-                }
-            });
-        }
-
-        private void enqueueNext() {
-            mTaskQueue.enqueue(this);
-        }
-
-        private void playNext() {
-            mDoodleView.redoByStep(1, new DoodleView.ActionCallback2() {
-                @Override
-                public void onActionResult(boolean success, int value) {
-                    // ignore
-                }
-            });
-        }
-
-        @Override
-        public void run() {
-            if (!isAvailable()) {
-                return;
-            }
-            playNext();
-
-            Threads.sleepQuietly(getSpeed());
-            mDoodleView.canRedoByStep(new DoodleView.ActionCallback() {
-                @Override
-                public void onActionResult(boolean success) {
-                    if (success) {
-                        enqueueNext();
-                    }
-                }
-            });
-        }
-
-        @Override
-        public boolean isAvailable() {
-            return DoodleViewPlayer.this.mPlayController == this;
-        }
-    }
-
-    private void resetDoodleData(@NonNull DoodleData doodleData) {
+    private static void resetDoodleData(@NonNull DoodleData doodleData) {
         // 清空现有的 redo, 并将现有绘画步骤全部移动到 redo 中
         doodleData.drawStepDatasRedo = null;
         ArrayList<DoodleData.DrawStepData> drawStepDatas = doodleData.drawStepDatas;
@@ -299,6 +257,58 @@ public class DoodleViewPlayer extends FrameLayout {
 
     private static void showLog(@NonNull String log) {
         Toast.makeText(AppContext.getContext(), log, Toast.LENGTH_SHORT).show();
+    }
+
+    private PlayEngine mPlayEngine;
+
+    private void startPlayEngine(PlayController playController) {
+        mPlayEngine = new PlayEngine(playController);
+        mPlayEngine.start();
+    }
+
+    private class PlayEngine implements Available, Runnable {
+
+        private final PlayController mPlayController;
+
+        private PlayEngine(PlayController playController) {
+            mPlayController = playController;
+        }
+
+        private void start() {
+            mPlayController.pendingRunWithDelay(this, 0L);
+        }
+
+        @Override
+        public void run() {
+            if (!isAvailable()) {
+                return;
+            }
+
+            mDoodleView.isInitOk(new DoodleView.ActionCallback() {
+                @Override
+                public void onActionResult(boolean success) {
+                    if (success) {
+                        mDoodleView.redoByStep(1, new DoodleView.ActionCallback2() {
+                            @Override
+                            public void onActionResult(boolean success, int value) {
+                                // ignore
+                            }
+                        });
+                    }
+
+                    mPlayController.pendingRunWithDelay(PlayEngine.this, getSpeedDelay());
+                }
+            });
+
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return mPlayEngine == this
+                    && mPlayController.isAvailable()
+                    && mPlayController.isPlaying();
+        }
+
     }
 
 }

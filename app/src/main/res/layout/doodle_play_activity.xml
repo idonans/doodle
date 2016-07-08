@@ -8,7 +8,7 @@
              android:fitsSystemWindows="true"
              tools:context="com.idonans.doodle.demo.MainActivity">
 
-    <com.idonans.doodle.DoodleViewPlayer
+    <com.idonans.doodle.player.DoodleViewPlayer
         android:id="@+id/doodle_view_player"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
