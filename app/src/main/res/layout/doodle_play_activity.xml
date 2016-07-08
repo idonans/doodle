@@ -14,4 +14,33 @@
         android:layout_height="match_parent"
         android:background="#FF323232"/>
 
+    <LinearLayout
+        android:id="@+id/play_controller_panel"
+        android:layout_width="match_parent"
+        android:layout_height="45dp"
+        android:layout_gravity="bottom"
+        android:background="#80ffffff"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/seek_back"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:minWidth="40dp"
+            android:text="快退"/>
+
+        <Button
+            android:id="@+id/play_pause"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:minWidth="40dp"
+            android:text="播放/暂停"/>
+
+        <Button
+            android:id="@+id/seek_forward"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:minWidth="40dp"
+            android:text="快进"/>
+    </LinearLayout>
 </FrameLayout>

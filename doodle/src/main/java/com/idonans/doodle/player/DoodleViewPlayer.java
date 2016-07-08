@@ -135,7 +135,7 @@ public class DoodleViewPlayer extends FrameLayout {
                         public void run() {
                             if (autoPlay) {
                                 // 准备完成之后自动播放
-                                start();
+                                play();
                             }
                         }
                     });
@@ -165,7 +165,7 @@ public class DoodleViewPlayer extends FrameLayout {
         }
     }
 
-    public void start() {
+    public void play() {
         if (mPlayController != null) {
             startPlayEngine(mPlayController);
         }
@@ -361,7 +361,17 @@ public class DoodleViewPlayer extends FrameLayout {
         }
 
         protected void onSizeSeeked(int sizeSeeked) {
-            // ignore
+            if (sizeSeeked == 0) {
+                // 播放完成
+                if (isAvailable()) {
+                    mPlayController.complete(new Runnable() {
+                        @Override
+                        public void run() {
+                            CommonLog.d(TAG + " play complete");
+                        }
+                    });
+                }
+            }
         }
 
         protected long getSpeedDelay() {
