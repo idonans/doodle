@@ -17,6 +17,7 @@ public class DoodlePlayActivity extends CommonActivity {
     public static final String EXTRA_DD_FILE_IGNORE_EMPTY_DRAW_STEP = "extra.DD_FILE_IGNORE_EMPTY_DRAW_STEP";
 
     private DoodleViewPlayer mDoodleViewPlayer;
+    private boolean mResumeToStart;
 
     public static Intent start(Context context, String ddFilePath, boolean ignoreEmptyDrawStep) {
         Intent intent = new Intent(context, DoodlePlayActivity.class);
@@ -40,19 +41,22 @@ public class DoodlePlayActivity extends CommonActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        mDoodleViewPlayer.resume();
+        if (mResumeToStart) {
+            mDoodleViewPlayer.start();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        mResumeToStart = mDoodleViewPlayer.isPlaying();
         mDoodleViewPlayer.pause();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mDoodleViewPlayer.close();
+        mDoodleViewPlayer.stop();
     }
 
 }

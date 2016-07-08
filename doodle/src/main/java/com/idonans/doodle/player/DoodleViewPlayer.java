@@ -120,22 +120,20 @@ public class DoodleViewPlayer extends FrameLayout {
                 final int errorCodeDDFile = (int) ret[0];
                 if (errorCodeDDFile == ERROR_CODE_DD_FILE_OK) {
                     // dd 文件解析成功
-                    final DoodleData doodleData = (DoodleData) ret[1];
+                    DoodleData doodleData = (DoodleData) ret[1];
                     // play doodle data
                     resetDoodleData(doodleData);
+
+                    if (playController.isAvailable()) {
+                        mDoodleView.load(doodleData);
+                    }
+
                     playController.prepared(new Runnable() {
                         @Override
                         public void run() {
-                            mDoodleView.load(doodleData);
-
                             if (autoPlay) {
                                 // 准备完成之后自动播放
-                                playController.play(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        startPlayEngine(playController);
-                                    }
-                                });
+                                start();
                             }
                         }
                     });
@@ -165,10 +163,25 @@ public class DoodleViewPlayer extends FrameLayout {
         }
     }
 
-    public void resume() {
+    public void start() {
         if (mPlayController != null) {
             startPlayEngine(mPlayController);
         }
+    }
+
+    public void stop() {
+        if (mPlayController != null) {
+            mPlayController.stop(new Runnable() {
+                @Override
+                public void run() {
+                    // ignore
+                }
+            });
+        }
+    }
+
+    public boolean isPlaying() {
+        return mPlayController != null && mPlayController.isPlaying();
     }
 
     private void showDDFileErrorMessage(int errorCodeDDFile) {
@@ -188,11 +201,6 @@ public class DoodleViewPlayer extends FrameLayout {
                 break;
         }
     }
-
-    public void close() {
-        mPlayController = null;
-    }
-
 
     private static void resetDoodleData(@NonNull DoodleData doodleData) {
         // 清空现有的 redo, 并将现有绘画步骤全部移动到 redo 中
@@ -277,6 +285,8 @@ public class DoodleViewPlayer extends FrameLayout {
         private void start() {
             if (isAvailable()) {
                 mPlayController.pendingRunWithDelay(this, 0L);
+            } else {
+                mPlayController.play(this);
             }
         }
 
