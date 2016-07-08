@@ -318,7 +318,7 @@ public class DoodleViewPlayer extends FrameLayout {
                                 @Override
                                 public void onActionResult(boolean success, int value) {
                                     onSizeSeeked(value);
-                                    if (success) {
+                                    if (success && getSeekSize() != 0) {
                                         mPlayController.pendingRunWithDelay(PlayEngine.this, getSpeedDelay());
                                     }
                                 }
@@ -329,7 +329,7 @@ public class DoodleViewPlayer extends FrameLayout {
                                 @Override
                                 public void onActionResult(boolean success, int value) {
                                     onSizeSeeked(-value);
-                                    if (success) {
+                                    if (success && getSeekSize() != 0) {
                                         mPlayController.pendingRunWithDelay(PlayEngine.this, getSpeedDelay());
                                     }
                                 }
