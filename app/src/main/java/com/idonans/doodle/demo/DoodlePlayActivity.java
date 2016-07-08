@@ -34,7 +34,7 @@ public class DoodlePlayActivity extends CommonActivity {
 
         setContentView(R.layout.doodle_play_activity);
         mDoodleViewPlayer = ViewUtil.findViewByID(this, R.id.doodle_view_player);
-        mDoodleViewPlayer.play(ddFilePath, ignoreEmptyDrawStep);
+        mDoodleViewPlayer.setDoodleData(ddFilePath, ignoreEmptyDrawStep, true);
     }
 
     @Override
