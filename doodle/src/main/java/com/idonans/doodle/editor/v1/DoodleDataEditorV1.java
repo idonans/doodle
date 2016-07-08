@@ -1,10 +1,10 @@
-package com.idonans.doodle.dd.v1;
+package com.idonans.doodle.editor.v1;
 
 import com.idonans.acommon.lang.Charsets;
 import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.util.IOUtil;
 import com.idonans.doodle.DoodleData;
-import com.idonans.doodle.dd.DoodleDataEditor;
+import com.idonans.doodle.editor.DoodleDataEditor;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

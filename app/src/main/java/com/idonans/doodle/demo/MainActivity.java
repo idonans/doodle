@@ -19,8 +19,8 @@ import com.idonans.acommon.util.IOUtil;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleData;
 import com.idonans.doodle.DoodleView;
-import com.idonans.doodle.dd.DoodleDataEditor;
-import com.idonans.doodle.dd.v1.DoodleDataEditorV1;
+import com.idonans.doodle.editor.DoodleDataEditor;
+import com.idonans.doodle.editor.v1.DoodleDataEditorV1;
 
 import java.io.File;
 import java.io.FileNotFoundException;
