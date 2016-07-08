@@ -362,6 +362,7 @@ public class DoodleViewPlayer extends FrameLayout {
 
         protected void onSizeSeeked(int sizeSeeked) {
             if (sizeSeeked == 0) {
+                CommonLog.d(TAG + " onSizeSeeked with 0, try complete");
                 // 播放完成
                 if (isAvailable()) {
                     mPlayController.complete(new Runnable() {
@@ -418,6 +419,8 @@ public class DoodleViewPlayer extends FrameLayout {
 
         @Override
         protected void onSizeSeeked(int sizeSeeked) {
+            CommonLog.d(TAG + " onSizeSeeked mSeekSize:" + mSeekSize + ", sizeSeeked:" + sizeSeeked);
+
             if (mSeekSize > 0 && sizeSeeked > 0 && mSeekSize >= sizeSeeked) {
                 mSeekSize -= sizeSeeked;
             } else if (mSeekSize < 0 && sizeSeeked < 0 && mSeekSize <= sizeSeeked) {
