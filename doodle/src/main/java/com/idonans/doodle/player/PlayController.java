@@ -60,6 +60,18 @@ public abstract class PlayController implements Available {
         return mStatus == STATUS_PLAYING;
     }
 
+    public boolean isPrepared() {
+        return mStatus == STATUS_PREPARED;
+    }
+
+    public boolean isPaused() {
+        return mStatus == STATUS_PAUSED;
+    }
+
+    public boolean isCompleted() {
+        return mStatus == STATUS_COMPLETE;
+    }
+
     public int getStatus() {
         return mStatus;
     }
@@ -106,7 +118,8 @@ public abstract class PlayController implements Available {
 
     protected final boolean moveStatusToPaused() {
         if (mStatus != STATUS_PREPARED
-                && mStatus != STATUS_PLAYING) {
+                && mStatus != STATUS_PLAYING
+                && mStatus != STATUS_COMPLETE) {
             printStatusError(STATUS_PAUSED);
             return false;
         }
