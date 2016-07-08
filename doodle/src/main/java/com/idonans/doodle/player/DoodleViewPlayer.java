@@ -275,7 +275,9 @@ public class DoodleViewPlayer extends FrameLayout {
         }
 
         private void start() {
-            mPlayController.pendingRunWithDelay(this, 0L);
+            if (isAvailable()) {
+                mPlayController.pendingRunWithDelay(this, 0L);
+            }
         }
 
         @Override
