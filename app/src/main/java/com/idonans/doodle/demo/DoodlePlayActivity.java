@@ -70,12 +70,18 @@ public class DoodlePlayActivity extends CommonActivity {
         private final View mSeekBack;
         private final View mSeekForward;
         private final View mPlayOrPause;
+        private final View mSpeedUp;
+        private final View mSpeedDown;
+
+        private long mSpeedDelay = 20L;
 
         private PlayControllerPanel(Activity activity) {
             mView = ViewUtil.findViewByID(activity, R.id.play_controller_panel);
             mSeekBack = ViewUtil.findViewByID(mView, R.id.seek_back);
             mSeekForward = ViewUtil.findViewByID(mView, R.id.seek_forward);
             mPlayOrPause = ViewUtil.findViewByID(mView, R.id.play_pause);
+            mSpeedUp = ViewUtil.findViewByID(mView, R.id.speed_up);
+            mSpeedDown = ViewUtil.findViewByID(mView, R.id.speed_down);
 
             mSeekBack.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -99,6 +105,31 @@ public class DoodlePlayActivity extends CommonActivity {
                     }
                 }
             });
+            mSpeedUp.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    syncSpeed((long) (mSpeedDelay * 0.8f));
+                }
+            });
+            mSpeedDown.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    syncSpeed((long) (mSpeedDelay * 1.2f));
+                }
+            });
+
+            syncSpeed(mSpeedDelay);
+        }
+
+        private void syncSpeed(long speedDelay) {
+            if (speedDelay < 0L) {
+                speedDelay = 0L;
+            } else if (speedDelay > 500L) {
+                speedDelay = 500L;
+            }
+
+            mSpeedDelay = speedDelay;
+            mDoodleViewPlayer.setSpeedDelay(mSpeedDelay);
         }
 
     }

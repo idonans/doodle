@@ -42,5 +42,19 @@
             android:layout_height="match_parent"
             android:minWidth="40dp"
             android:text="快进"/>
+
+        <Button
+            android:id="@+id/speed_up"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:minWidth="40dp"
+            android:text="速度+"/>
+
+        <Button
+            android:id="@+id/speed_down"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:minWidth="40dp"
+            android:text="速度-"/>
     </LinearLayout>
 </FrameLayout>
