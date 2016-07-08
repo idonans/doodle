@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import com.idonans.acommon.AppContext;
 import com.idonans.acommon.lang.Available;
+import com.idonans.acommon.lang.CommonLog;
 import com.idonans.acommon.lang.TaskQueue;
 import com.idonans.acommon.util.ViewUtil;
 import com.idonans.doodle.DoodleData;
@@ -29,6 +30,7 @@ import java.util.Collections;
  */
 public class DoodleViewPlayer extends FrameLayout {
 
+    private static final String TAG = "DoodleViewPlayer";
     private DoodleView mDoodleView;
     private TaskQueue mTaskQueue;
     private PlayController mPlayController;
@@ -169,6 +171,12 @@ public class DoodleViewPlayer extends FrameLayout {
         }
     }
 
+    public void seekBy(int seekSize) {
+        if (mPlayController != null) {
+            startSeekBy(mPlayController, seekSize);
+        }
+    }
+
     public void stop() {
         if (mPlayController != null) {
             mPlayController.stop(new Runnable() {
@@ -270,19 +278,22 @@ public class DoodleViewPlayer extends FrameLayout {
     private PlayEngine mPlayEngine;
 
     private void startPlayEngine(PlayController playController) {
-        mPlayEngine = new PlayEngine(playController);
+        mPlayEngine = new PlayEngine(playController, this);
         mPlayEngine.start();
     }
 
-    private class PlayEngine implements Available, Runnable {
+    private static class PlayEngine implements Available, Runnable {
 
-        private final PlayController mPlayController;
+        protected final String TAG = getClass().getSimpleName();
+        protected final PlayController mPlayController;
+        protected final DoodleViewPlayer mPlayer;
 
-        private PlayEngine(PlayController playController) {
+        private PlayEngine(PlayController playController, DoodleViewPlayer player) {
             mPlayController = playController;
+            mPlayer = player;
         }
 
-        private void start() {
+        protected void start() {
             if (isAvailable()) {
                 mPlayController.pendingRunWithDelay(this, 0L);
             } else {
@@ -296,19 +307,40 @@ public class DoodleViewPlayer extends FrameLayout {
                 return;
             }
 
-            mDoodleView.isInitOk(new DoodleView.ActionCallback() {
+            mPlayer.mDoodleView.isInitOk(new DoodleView.ActionCallback() {
                 @Override
                 public void onActionResult(boolean success) {
                     if (success) {
-                        mDoodleView.redoByStep(1, new DoodleView.ActionCallback2() {
-                            @Override
-                            public void onActionResult(boolean success, int value) {
-                                // ignore
-                            }
-                        });
+                        final int seekSize = getSeekSize();
+                        if (seekSize > 0) {
+                            // redo
+                            mPlayer.mDoodleView.redoByStep(seekSize, new DoodleView.ActionCallback2() {
+                                @Override
+                                public void onActionResult(boolean success, int value) {
+                                    onSizeSeeked(value);
+                                    if (success) {
+                                        mPlayController.pendingRunWithDelay(PlayEngine.this, getSpeedDelay());
+                                    }
+                                }
+                            });
+                        } else if (seekSize < 0) {
+                            // undo
+                            mPlayer.mDoodleView.undoByStep(-seekSize, new DoodleView.ActionCallback2() {
+                                @Override
+                                public void onActionResult(boolean success, int value) {
+                                    onSizeSeeked(-value);
+                                    if (success) {
+                                        mPlayController.pendingRunWithDelay(PlayEngine.this, getSpeedDelay());
+                                    }
+                                }
+                            });
+                        } else {
+                            CommonLog.d(TAG + " no seek size");
+                        }
+                    } else {
+                        // wait for init ok
+                        mPlayController.pendingRunWithDelay(PlayEngine.this, 100L);
                     }
-
-                    mPlayController.pendingRunWithDelay(PlayEngine.this, getSpeedDelay());
                 }
             });
 
@@ -316,9 +348,114 @@ public class DoodleViewPlayer extends FrameLayout {
 
         @Override
         public boolean isAvailable() {
-            return mPlayEngine == this
+            return mPlayer.mPlayEngine == this
                     && mPlayController.isAvailable()
                     && mPlayController.isPlaying();
+        }
+
+        /**
+         * 如果 <0, 则向左 seek, 如果 >0, 则向右, 否则终止 seek
+         */
+        protected int getSeekSize() {
+            return 1;
+        }
+
+        protected void onSizeSeeked(int sizeSeeked) {
+            // ignore
+        }
+
+        protected long getSpeedDelay() {
+            return mPlayer.getSpeedDelay();
+        }
+
+    }
+
+    private void startSeekBy(PlayController playController, int seekSize) {
+        if (seekSize == 0) {
+            CommonLog.d(TAG + " seek size is 0, ignore seek by");
+            return;
+        }
+        mPlayEngine = new SeekEngine(playController, this, seekSize);
+        mPlayEngine.start();
+    }
+
+    private static class SeekEngine extends PlayEngine {
+
+        private int mSeekSize;
+
+        private SeekEngine(PlayController playController, DoodleViewPlayer player, int seekSize) {
+            super(playController, player);
+            mSeekSize = seekSize;
+            if (mSeekSize == 0) {
+                throw new IllegalArgumentException("seek size invalid " + mSeekSize);
+            }
+        }
+
+        @Override
+        protected void start() {
+            if (isAvailable()) {
+                mPlayController.pendingRunWithDelay(this, 0L);
+            } else {
+                // can not seek
+                new IllegalStateException("can not seek").printStackTrace();
+            }
+        }
+
+        @Override
+        public int getSeekSize() {
+            return mSeekSize;
+        }
+
+        @Override
+        protected void onSizeSeeked(int sizeSeeked) {
+            if (mSeekSize > 0 && sizeSeeked > 0 && mSeekSize >= sizeSeeked) {
+                mSeekSize -= sizeSeeked;
+            } else if (mSeekSize < 0 && sizeSeeked < 0 && mSeekSize <= sizeSeeked) {
+                mSeekSize -= sizeSeeked;
+            } else if (sizeSeeked != 0) {
+                new IllegalStateException("error size seeked:" + sizeSeeked + ", mSeekSize:" + mSeekSize).printStackTrace();
+            }
+
+            if (sizeSeeked == 0 || mSeekSize == 0) {
+                // seek 完成，恢复之前的播放状态 (所有期望的 seek 已经完成 或者 当前 player 中没有更多的内容可以 seek)
+                if (isAvailable()) {
+                    resumePlayStatusAfterSeekFinished();
+                }
+            }
+        }
+
+        private void resumePlayStatusAfterSeekFinished() {
+            if (mPlayController.isCompleted()) {
+                mPlayController.pause(new Runnable() {
+                    @Override
+                    public void run() {
+                        CommonLog.d(TAG + " pause player from status completed");
+                    }
+                });
+            } else if (mPlayController.isPrepared()) {
+                mPlayController.pause(new Runnable() {
+                    @Override
+                    public void run() {
+                        CommonLog.d(TAG + " pause player from status prepared");
+                    }
+                });
+            } else if (mPlayController.isPlaying()) {
+                CommonLog.d(TAG + " continue playing after seek finished");
+                mPlayer.startPlayEngine(mPlayController);
+            }
+        }
+
+        @Override
+        protected long getSpeedDelay() {
+            return 0L;
+        }
+
+        @Override
+        public boolean isAvailable() {
+            // 在播放，暂停，完成 或者 资源已准备好的状态下可以 seek
+            return mPlayer.mPlayEngine == this
+                    && mPlayController.isAvailable()
+                    && (mPlayController.isPlaying() || mPlayController.isPrepared() || mPlayController.isPaused() || mPlayController.isCompleted());
         }
 
     }
