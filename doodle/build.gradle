@@ -10,7 +10,14 @@ def int getAutoVersionCode() {
 def String getAutoVersionName(int versionCode) {
     def cmd = 'git describe --tags'
     def versionNamePrefix = cmd.execute().text.trim()
-    // 需要注意 tag 的命名，如 0.1
+
+    def pattern = "-(\\d+)-g"
+    def matcher = versionNamePrefix =~ pattern
+
+    if (matcher) {
+        versionNamePrefix = versionNamePrefix.substring(0, matcher.start())
+    }
+
     return versionNamePrefix + "." + versionCode
 }
 
