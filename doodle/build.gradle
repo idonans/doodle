@@ -2,7 +2,21 @@ apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
-version = "0.1.10"
+def int getAutoVersionCode() {
+    def cmd = "git rev-list HEAD --count"
+    return cmd.execute().text.trim().toInteger()
+}
+
+def String getAutoVersionName(int versionCode) {
+    def cmd = 'git describe --tags'
+    def versionNamePrefix = cmd.execute().text.trim()
+    // 需要注意 tag 的命名，如 0.1
+    return versionNamePrefix + "." + versionCode
+}
+
+def autoVersionCode = getAutoVersionCode();
+def autoVersionName = getAutoVersionName(autoVersionCode);
+version = autoVersionName
 
 android {
     compileSdkVersion 24
@@ -11,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion 16
         targetSdkVersion 24
-        versionCode 110
-        versionName version
+        versionCode autoVersionCode
+        versionName autoVersionName
     }
     buildTypes {
         release {
