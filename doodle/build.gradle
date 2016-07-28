@@ -2,27 +2,36 @@ apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
+// 使用 git commit 总数作为 version code
 def int getAutoVersionCode() {
     def cmd = "git rev-list HEAD --count"
     return cmd.execute().text.trim().toInteger()
 }
 
-def String getAutoVersionName(int versionCode) {
-    def cmd = 'git describe --tags'
-    def versionNamePrefix = cmd.execute().text.trim()
+// 使用距离最近的标签名 + "." + 距离该标签的 commit 数量 作为版本名称, 通常标签使用如 0.1, 1.0, 1.89等命名方式
+def String getAutoVersionName() {
+    def cmd = "git describe --tags"
+    def tagDesc = cmd.execute().text.trim()
 
     def pattern = "-(\\d+)-g"
-    def matcher = versionNamePrefix =~ pattern
+    def matcher = tagDesc =~ pattern
+
+    def tagName
+    def commitCount
 
     if (matcher) {
-        versionNamePrefix = versionNamePrefix.substring(0, matcher.start())
+        tagName = tagDesc.substring(0, matcher.start())
+        commitCount = matcher[0][1]
+    } else {
+        tagName = tagDesc;
+        commitCount = "0";
     }
 
-    return versionNamePrefix + "." + versionCode
+    return tagName + "." + commitCount
 }
 
-def autoVersionCode = getAutoVersionCode();
-def autoVersionName = getAutoVersionName(autoVersionCode);
+def autoVersionCode = getAutoVersionCode()
+def autoVersionName = getAutoVersionName()
 version = autoVersionName
 
 android {
